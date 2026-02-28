@@ -64,7 +64,7 @@ public class ProjectService : IProjectService
         }
     }
 
-    public async Task<Result<(IEnumerable<ProjectDto> Items, int TotalCount)>> GetProjectsAsync(
+    public async Task<Result<PaginatedResultDto<ProjectDto>>> GetProjectsAsync(
         DateTime? startDateFrom,
         DateTime? startDateTo,
         int? priority,
@@ -79,12 +79,12 @@ public class ProjectService : IProjectService
             var (items, totalCount) = await _projectRepository.GetProjectsAsync(
                 startDateFrom, startDateTo, priority, sortBy, sortDescending, pageNumber, pageSize, true, cancellationToken);
 
-            return Result<(IEnumerable<ProjectDto>, int)>.Success((items.Select(MapToDto), totalCount));
+            return Result<PaginatedResultDto<ProjectDto>>.Success(new PaginatedResultDto<ProjectDto>(items.Select(MapToDto), totalCount));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while filtering projects");
-            return Result<(IEnumerable<ProjectDto>, int)>.Failure(Error.Unexpected("An internal error occurred"));
+            return Result<PaginatedResultDto<ProjectDto>>.Failure(Error.Unexpected("An internal error occurred"));
         }
     }
 

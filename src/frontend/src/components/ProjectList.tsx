@@ -13,9 +13,15 @@ export const ProjectList: React.FC = () => {
   });
 
   const fetchProjects = () => {
-    api.projects.getAll(filters).then(res => {
+    // Filter out empty strings to avoid model binding issues on the backend
+    const activeFilters = Object.fromEntries(
+      Object.entries(filters).filter(([_, v]) => v !== '')
+    );
+    
+    api.projects.getAll(activeFilters).then(res => {
       if (res.isSuccess) {
-        setProjects(Array.isArray(res.value) ? res.value : (res.value as any).items);
+        // Now res.value is PaginatedResultDto with an Items property
+        setProjects(Array.isArray(res.value) ? res.value : (res.value as any).items || []);
       }
     });
   };

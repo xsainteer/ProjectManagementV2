@@ -44,3 +44,5 @@ public record UpdateProjectDto(
 );
 
 public record FileData(Stream Stream, string FileName);
+
+public record PaginatedResultDto<T>(IEnumerable<T> Items, int TotalCount);

@@ -14,7 +14,7 @@ public interface IEmployeeService : IService<Employee, EmployeeDto, CreateEmploy
 
 public interface IProjectService : IService<Project, ProjectDto, CreateProjectDto, UpdateProjectDto>
 {
-    Task<Result<(IEnumerable<ProjectDto> Items, int TotalCount)>> GetProjectsAsync(
+    Task<Result<PaginatedResultDto<ProjectDto>>> GetProjectsAsync(
         DateTime? startDateFrom,
         DateTime? startDateTo,
         int? priority,
