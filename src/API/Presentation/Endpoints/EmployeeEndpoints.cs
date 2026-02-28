@@ -18,10 +18,11 @@ public static class EmployeeEndpoints
     }
 
     private static async Task<IResult> GetEmployees(
+        [FromQuery] string? search,
         [FromServices] IEmployeeService employeeService,
         CancellationToken cancellationToken)
     {
-        var result = await employeeService.GetAllAsync(cancellationToken);
+        var result = await employeeService.GetAllAsync(search, cancellationToken);
         return ResultMapper.ToActionResult(result);
     }
 

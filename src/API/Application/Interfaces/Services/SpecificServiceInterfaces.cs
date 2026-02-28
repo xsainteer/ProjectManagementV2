@@ -9,6 +9,7 @@ namespace Application.Interfaces.Services;
 
 public interface IEmployeeService : IService<Employee, EmployeeDto, CreateEmployeeDto, UpdateEmployeeDto>
 {
+    Task<Result<IEnumerable<EmployeeDto>>> GetAllAsync(string? searchTerm, CancellationToken cancellationToken = default);
 }
 
 public interface IProjectService : IService<Project, ProjectDto, CreateProjectDto, UpdateProjectDto>

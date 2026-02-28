@@ -50,11 +50,11 @@ public class EmployeeService : IEmployeeService
         }
     }
 
-    public async Task<Result<IEnumerable<EmployeeDto>>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<Result<IEnumerable<EmployeeDto>>> GetAllAsync(string? searchTerm, CancellationToken cancellationToken = default)
     {
         try
         {
-            var employees = await _employeeRepository.GetAllAsync(true, cancellationToken);
+            var employees = await _employeeRepository.GetAllAsync(searchTerm, true, cancellationToken);
             var dtos = employees.Select(e => new EmployeeDto(
                 e.Id,
                 e.FirstName,
@@ -67,9 +67,14 @@ public class EmployeeService : IEmployeeService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error occurred while getting all employees");
+            _logger.LogError(ex, "Error occurred while getting all employees with search term: {SearchTerm}", searchTerm);
             return Result<IEnumerable<EmployeeDto>>.Failure(Error.Unexpected("An internal error occurred"));
         }
+    }
+
+    public async Task<Result<IEnumerable<EmployeeDto>>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        return await GetAllAsync(null, cancellationToken);
     }
 
     public async Task<Result<EmployeeDto>> CreateAsync(CreateEmployeeDto createDto, CancellationToken cancellationToken = default)

@@ -10,6 +10,26 @@ namespace Infrastructure.Data.Repositories;
 public class EmployeeRepository : Repository<Employee>, IEmployeeRepository
 {
     public EmployeeRepository(AppDbContext context) : base(context) { }
+
+    public async Task<IEnumerable<Employee>> GetAllAsync(string? searchTerm, bool asNoTracking = true, CancellationToken cancellationToken = default)
+    {
+        var query = _dbSet.AsQueryable();
+
+        if (asNoTracking)
+            query = query.AsNoTracking();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            searchTerm = searchTerm.ToLower();
+            query = query.Where(e => 
+                e.FirstName.ToLower().Contains(searchTerm) || 
+                e.LastName.ToLower().Contains(searchTerm) || 
+                e.Email.ToLower().Contains(searchTerm) ||
+                (e.FirstName + " " + e.LastName).ToLower().Contains(searchTerm));
+        }
+
+        return await query.ToListAsync(cancellationToken);
+    }
 }
 
 public class ProjectRepository : Repository<Project>, IProjectRepository
