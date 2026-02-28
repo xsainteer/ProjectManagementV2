@@ -14,6 +14,7 @@ public class ProjectService : IProjectService
     private readonly IEmployeeRepository _employeeRepository;
     private readonly ILogger<ProjectService> _logger;
     private readonly IValidator<CreateProjectDto> _createValidator;
+    private readonly IValidator<CreateFullProjectDto> _createFullValidator;
     private readonly IValidator<UpdateProjectDto> _updateValidator;
 
     public ProjectService(
@@ -21,12 +22,14 @@ public class ProjectService : IProjectService
         IEmployeeRepository employeeRepository,
         ILogger<ProjectService> logger,
         IValidator<CreateProjectDto> createValidator,
+        IValidator<CreateFullProjectDto> createFullValidator,
         IValidator<UpdateProjectDto> updateValidator)
     {
         _projectRepository = projectRepository;
         _employeeRepository = employeeRepository;
         _logger = logger;
         _createValidator = createValidator;
+        _createFullValidator = createFullValidator;
         _updateValidator = updateValidator;
     }
 
@@ -117,6 +120,41 @@ public class ProjectService : IProjectService
         {
             _logger.LogError(ex, "Error occurred while creating project");
             return Result<ProjectDto>.Failure(Error.Unexpected("An internal error occurred"));
+        }
+    }
+
+    public async Task<Result<ProjectDto>> CreateFullAsync(CreateFullProjectDto createDto, List<FileData> files, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var validationResult = await _createFullValidator.ValidateAsync(createDto, cancellationToken);
+            if (!validationResult.IsValid)
+                return Result<ProjectDto>.Failure(Error.Validation(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
+
+            var project = new Project
+            {
+                Name = createDto.Name,
+                CustomerCompany = createDto.CustomerCompany,
+                PerformerCompany = createDto.PerformerCompany,
+                ProjectManagerId = createDto.ProjectManagerId,
+                StartDate = createDto.StartDate,
+                EndDate = createDto.EndDate,
+                Priority = createDto.Priority
+            };
+
+            var createdProject = await _projectRepository.CreateFullAsync(project, createDto.ExecutorIds, files, cancellationToken);
+
+            return Result<ProjectDto>.Success(MapToDto(createdProject));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while creating full project");
+            
+            // lazy to do it another way, but it works for now
+            if (ex.Message.Contains("not found"))
+                return Result<ProjectDto>.Failure(Error.NotFound(ex.Message));
+                
+            return Result<ProjectDto>.Failure(Error.Unexpected("An internal error occurred during project creation."));
         }
     }
 

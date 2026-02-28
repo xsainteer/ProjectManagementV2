@@ -13,6 +13,7 @@ public static class ProjectEndpoints
         group.MapGet("/", GetProjects);
         group.MapGet("/{id:int}", GetProjectById);
         group.MapPost("/", CreateProject);
+        group.MapPost("/full", CreateFullProject).DisableAntiforgery();
         group.MapPut("/{id:int}", UpdateProject);
         group.MapDelete("/{id:int}", DeleteProject);
     }
@@ -50,6 +51,51 @@ public static class ProjectEndpoints
     {
         var result = await projectService.CreateAsync(createDto, cancellationToken);
         return ResultMapper.ToActionResult(result, successStatusCode: StatusCodes.Status201Created);
+    }
+
+    private static async Task<IResult> CreateFullProject(
+        [FromForm] string name,
+        [FromForm] string customerCompany,
+        [FromForm] string performerCompany,
+        [FromForm] int projectManagerId,
+        [FromForm] DateTime startDate,
+        [FromForm] DateTime? endDate,
+        [FromForm] int priority,
+        [FromForm] List<int> executorIds,
+        IFormFileCollection files,
+        [FromServices] IProjectService projectService,
+        CancellationToken cancellationToken)
+    {
+        var createDto = new CreateFullProjectDto(
+            name,
+            customerCompany,
+            performerCompany,
+            projectManagerId,
+            startDate,
+            endDate,
+            priority,
+            executorIds
+        );
+
+        var fileDataList = new List<FileData>();
+
+        try
+        {
+            foreach (var file in files)
+            {
+                fileDataList.Add(new FileData(file.OpenReadStream(), file.FileName));
+            }
+
+            var result = await projectService.CreateFullAsync(createDto, fileDataList, cancellationToken);
+            return ResultMapper.ToActionResult(result, successStatusCode: StatusCodes.Status201Created);
+        }
+        finally
+        {
+            foreach (var fileData in fileDataList)
+            {
+                await fileData.Stream.DisposeAsync();
+            }
+        }
     }
 
     private static async Task<IResult> UpdateProject(

@@ -1,3 +1,4 @@
+using Application.DTOs.Project;
 using Domain.Entities;
 
 namespace Application.Interfaces;
@@ -19,6 +20,8 @@ public interface IProjectRepository : IRepository<Project>
         int pageSize,
         bool asNoTracking = true,
         CancellationToken cancellationToken = default);
+
+    Task<Project> CreateFullAsync(Project project, List<int> executorIds, List<FileData> files, CancellationToken cancellationToken = default);
 }
 
 public interface IProjectTaskRepository : IRepository<ProjectTask>

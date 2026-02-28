@@ -22,6 +22,8 @@ public interface IProjectService : IService<Project, ProjectDto, CreateProjectDt
         int pageNumber,
         int pageSize,
         CancellationToken cancellationToken = default);
+
+    Task<Result<ProjectDto>> CreateFullAsync(CreateFullProjectDto createDto, List<FileData> files, CancellationToken cancellationToken = default);
 }
 
 public interface IProjectTaskService : IService<ProjectTask, ProjectTaskDto, CreateProjectTaskDto, UpdateProjectTaskDto>

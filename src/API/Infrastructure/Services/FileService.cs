@@ -31,7 +31,7 @@ public class FileService : IFileService
             var uniqueFileName = $"{Guid.NewGuid()}_{fileName}";
             var filePath = Path.Combine(targetFolder, uniqueFileName);
 
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            await using (var stream = new FileStream(filePath, FileMode.Create))
             {
                 await fileStream.CopyToAsync(stream, cancellationToken);
             }
