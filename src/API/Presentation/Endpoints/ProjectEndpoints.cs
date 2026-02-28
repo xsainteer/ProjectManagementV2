@@ -53,30 +53,13 @@ public static class ProjectEndpoints
         return ResultMapper.ToActionResult(result, successStatusCode: StatusCodes.Status201Created);
     }
 
+    //TODO ExecutorsIds are '2,3' instead of [2,3]
     private static async Task<IResult> CreateFullProject(
-        [FromForm] string name,
-        [FromForm] string customerCompany,
-        [FromForm] string performerCompany,
-        [FromForm] int projectManagerId,
-        [FromForm] DateTime startDate,
-        [FromForm] DateTime? endDate,
-        [FromForm] int priority,
-        [FromForm] List<int> executorIds,
+        [FromForm] CreateFullProjectDto createDto,
         IFormFileCollection files,
         [FromServices] IProjectService projectService,
         CancellationToken cancellationToken)
     {
-        var createDto = new CreateFullProjectDto(
-            name,
-            customerCompany,
-            performerCompany,
-            projectManagerId,
-            startDate,
-            endDate,
-            priority,
-            executorIds
-        );
-
         var fileDataList = new List<FileData>();
 
         try
