@@ -1,5 +1,5 @@
 ﻿<Solution>
-  <Folder Name="/src/">
+  <Folder Name="/src/API/">
     <Project Path="src\API\Application\Application.csproj" Type="Classic C#" />
     <Project Path="src\API\Domain\Domain.csproj" Type="Classic C#" />
     <Project Path="src\API\Infrastructure\Infrastructure.csproj" Type="Classic C#" />
