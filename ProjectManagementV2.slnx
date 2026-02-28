@@ -5,4 +5,7 @@
     <Project Path="src\API\Infrastructure\Infrastructure.csproj" Type="Classic C#" />
     <Project Path="src\API\Presentation\Presentation.csproj" Type="Classic C#" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="ProjectTests\ProjectTests.csproj" Type="Classic C#" />
+  </Folder>
 </Solution>
