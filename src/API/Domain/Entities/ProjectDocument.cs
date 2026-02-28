@@ -1,6 +1,8 @@
+using Domain.Common;
+
 namespace Domain.Entities;
 
-public class ProjectDocument
+public class ProjectDocument : IEntity
 {
     public int Id { get; set; }
     public string FileName { get; set; } = string.Empty;

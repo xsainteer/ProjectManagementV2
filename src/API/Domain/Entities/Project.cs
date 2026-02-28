@@ -1,6 +1,8 @@
+using Domain.Common;
+
 namespace Domain.Entities;
 
-public class Project
+public class Project : IEntity
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;

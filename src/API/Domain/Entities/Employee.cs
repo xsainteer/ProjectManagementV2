@@ -1,6 +1,8 @@
+using Domain.Common;
+
 namespace Domain.Entities;
 
-public class Employee
+public class Employee : IEntity
 {
     public int Id { get; set; }
     public string FirstName { get; set; } = string.Empty;

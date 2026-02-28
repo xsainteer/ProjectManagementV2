@@ -21,9 +21,14 @@ public class ProjectRepository : Repository<Project>, IProjectRepository
         string? sortBy,
         bool sortDescending,
         int pageNumber,
-        int pageSize)
+        int pageSize,
+        bool asNoTracking = true,
+        CancellationToken cancellationToken = default)
     {
         var query = _dbSet.AsQueryable();
+
+        if (asNoTracking)
+            query = query.AsNoTracking();
 
         // Filtering
         if (startDateFrom.HasValue)
@@ -35,7 +40,7 @@ public class ProjectRepository : Repository<Project>, IProjectRepository
         if (priority.HasValue)
             query = query.Where(p => p.Priority == priority.Value);
 
-        // Sorting (can be more dynamic with reflection if needed, but this is straightforward for known fields)
+        // Sorting (can be made dynamic using reflection, but for simplicity, ill use a switch statement)
         query = sortBy?.ToLower() switch
         {
             "name" => sortDescending ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name),
@@ -46,13 +51,13 @@ public class ProjectRepository : Repository<Project>, IProjectRepository
             _ => query.OrderBy(p => p.Id) // Default sorting
         };
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync(cancellationToken);
 
         // Pagination
         var items = await query
             .Skip((pageNumber - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync();
+            .ToListAsync(cancellationToken);
 
         return (items, totalCount);
     }

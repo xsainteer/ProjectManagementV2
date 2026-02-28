@@ -16,7 +16,9 @@ public interface IProjectRepository : IRepository<Project>
         string? sortBy,
         bool sortDescending,
         int pageNumber,
-        int pageSize);
+        int pageSize,
+        bool asNoTracking = true,
+        CancellationToken cancellationToken = default);
 }
 
 public interface IProjectTaskRepository : IRepository<ProjectTask>
