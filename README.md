@@ -20,8 +20,7 @@ A full-stack project management application with a .NET Web API backend and a Re
 2. **Database Migration:**
    Ensure your connection string in `src/API/Presentation/appsettings.json` is correct for your local SQL Server instance, then run:
    ```bash
-   dotnet ef migrations add InitialCreate --project src/API/Infrastructure --startup-project src/API/Presentation
-   dotnet ef database update --project src/API/Infrastructure --startup-project src/API/Presentation
+   dotnet ef database update --project src/API/Infrastructure --startup-project src/API/Infrastructure
    ```
 
 3. **Run the API:**
