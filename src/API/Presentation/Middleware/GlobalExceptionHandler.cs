@@ -3,33 +3,43 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Presentation.Middleware;
 
-public class GlobalExceptionHandler : IExceptionHandler
+public class GlobalExceptionHandler(
+    ILogger<GlobalExceptionHandler> logger, 
+    IProblemDetailsService problemDetailsService,
+    IHostEnvironment env)
+    : IExceptionHandler
 {
-    private readonly ILogger<GlobalExceptionHandler> _logger;
-
-    public GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger)
-    {
-        _logger = logger;
-    }
-
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
         Exception exception,
         CancellationToken cancellationToken)
     {
-        _logger.LogError(exception, "An unhandled exception has occurred: {Message}", exception.Message);
+        logger.LogError(exception, "Unhandled exception occurred: {Message}", exception.Message);
 
-        var problemDetails = new ProblemDetails
+        var statusCode = exception switch
         {
-            Status = StatusCodes.Status500InternalServerError,
-            Title = "Internal Server Error",
-            Detail = "An unexpected error occurred. Please try again later."
+            UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
+            KeyNotFoundException => StatusCodes.Status404NotFound,
+            _ => StatusCodes.Status500InternalServerError
         };
 
-        httpContext.Response.StatusCode = problemDetails.Status.Value;
+        
+        string detail = env.IsDevelopment() 
+            ? exception.ToString() 
+            : "An unexpected error occurred. Please try again later.";
 
-        await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+        httpContext.Response.StatusCode = statusCode;
 
-        return true;
+        return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = httpContext,
+            ProblemDetails = new ProblemDetails
+            {
+                Status = statusCode,
+                Title = "An error occurred",
+                Detail = detail,
+                Instance = httpContext.Request.Path
+            }
+        });
     }
 }
