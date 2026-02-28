@@ -30,4 +30,7 @@ public interface IProjectTaskService : IService<ProjectTask, ProjectTaskDto, Cre
 
 public interface IProjectDocumentService : IService<ProjectDocument, ProjectDocumentDto, CreateProjectDocumentDto, ProjectDocumentDto>
 {
+    Task<Result<ProjectDocumentDto>> CreateWithFileAsync(CreateProjectDocumentDto createDto, Stream fileStream, string fileName, CancellationToken cancellationToken = default);
+    Task<Result> UpdateWithFileAsync(ProjectDocumentDto updateDto, Stream? fileStream, string? fileName, CancellationToken cancellationToken = default);
+    Task<Result<Stream>> GetFileStreamAsync(int id, CancellationToken cancellationToken = default);
 }
