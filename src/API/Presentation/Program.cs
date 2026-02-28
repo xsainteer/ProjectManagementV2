@@ -26,5 +26,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.MapProjectEndpoints();
+app.MapEmployeeEndpoints();
+app.MapProjectTaskEndpoints();
+app.MapProjectDocumentEndpoints();
 
 app.Run();

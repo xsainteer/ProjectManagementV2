@@ -31,9 +31,7 @@ public static class ProjectEndpoints
         var result = await projectService.GetProjectsAsync(
             startDateFrom, startDateTo, priority, sortBy, sortDescending, pageNumber, pageSize, cancellationToken);
 
-        return result.IsSuccess 
-            ? Results.Json(result.Value, statusCode: result.StatusCode) 
-            : Results.Problem(result.Error, statusCode: result.StatusCode);
+        return ResultMapper.ToActionResult(result);
     }
 
     private static async Task<IResult> GetProjectById(
@@ -42,10 +40,7 @@ public static class ProjectEndpoints
         CancellationToken cancellationToken)
     {
         var result = await projectService.GetByIdAsync(id, cancellationToken);
-        
-        return result.IsSuccess 
-            ? Results.Json(result.Value, statusCode: result.StatusCode) 
-            : Results.Problem(result.Error, statusCode: result.StatusCode);
+        return ResultMapper.ToActionResult(result);
     }
 
     private static async Task<IResult> CreateProject(
@@ -54,10 +49,7 @@ public static class ProjectEndpoints
         CancellationToken cancellationToken)
     {
         var result = await projectService.CreateAsync(createDto, cancellationToken);
-        
-        return result.IsSuccess 
-            ? Results.Json(result.Value, statusCode: result.StatusCode) 
-            : Results.Problem(result.Error, statusCode: result.StatusCode);
+        return ResultMapper.ToActionResult(result, successStatusCode: StatusCodes.Status201Created);
     }
 
     private static async Task<IResult> UpdateProject(
@@ -70,10 +62,7 @@ public static class ProjectEndpoints
             return Results.BadRequest("ID mismatch");
 
         var result = await projectService.UpdateAsync(updateDto, cancellationToken);
-        
-        return result.IsSuccess 
-            ? Results.StatusCode(result.StatusCode) 
-            : Results.Problem(result.Error, statusCode: result.StatusCode);
+        return ResultMapper.ToActionResult(result, successStatusCode: StatusCodes.Status204NoContent);
     }
 
     private static async Task<IResult> DeleteProject(
@@ -82,9 +71,6 @@ public static class ProjectEndpoints
         CancellationToken cancellationToken)
     {
         var result = await projectService.DeleteAsync(id, cancellationToken);
-        
-        return result.IsSuccess 
-            ? Results.StatusCode(result.StatusCode) 
-            : Results.Problem(result.Error, statusCode: result.StatusCode);
+        return ResultMapper.ToActionResult(result, successStatusCode: StatusCodes.Status204NoContent);
     }
 }

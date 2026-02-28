@@ -1,42 +1,79 @@
 namespace Domain.Common;
 
+public enum ErrorType
+{
+    None = 0,
+    Failure = 1,
+    Unexpected = 2,
+    Validation = 3,
+    Conflict = 4,
+    NotFound = 5,
+    Unauthorized = 6
+}
+
+public record Error(string Message, ErrorType Type = ErrorType.Failure)
+{
+    public static readonly Error None = new(string.Empty, ErrorType.None);
+
+    public static Error Failure(string message) => new(message, ErrorType.Failure);
+    public static Error Unexpected(string message) => new(message, ErrorType.Unexpected);
+    public static Error Validation(string message) => new(message, ErrorType.Validation);
+    public static Error Conflict(string message) => new(message, ErrorType.Conflict);
+    public static Error NotFound(string message) => new(message, ErrorType.NotFound);
+    public static Error Unauthorized(string message) => new(message, ErrorType.Unauthorized);
+}
+
 public class Result
 {
     public bool IsSuccess { get; }
-    public string Error { get; }
+    public Error Error { get; }
     public bool IsFailure => !IsSuccess;
-    public int StatusCode { get; }
 
-    protected Result(bool isSuccess, string error, int statusCode)
+    protected Result(bool isSuccess, Error error)
     {
-        if (isSuccess && error != string.Empty)
-            throw new InvalidOperationException("A success result cannot have an error message.");
-        if (!isSuccess && error == string.Empty)
-            throw new InvalidOperationException("A failure result must have an error message.");
+        if (isSuccess && error != Error.None)
+            throw new InvalidOperationException("A success result cannot have an error.");
+        if (!isSuccess && error == Error.None)
+            throw new InvalidOperationException("A failure result must have an error.");
 
         IsSuccess = isSuccess;
         Error = error;
-        StatusCode = statusCode;
     }
 
-    public static Result Success(int statusCode = 200) => new(true, string.Empty, statusCode);
-    public static Result Failure(string error, int statusCode = 400) => new(false, error, statusCode);
+    public static Result Success() => new(true, Error.None);
+    public static Result Failure(Error error) => new(false, error);
+    public static Result Failure(string message, ErrorType type = ErrorType.Failure) => Failure(new Error(message, type));
+    
+    public TResult Match<TResult>(
+        Func<TResult> onSuccess,
+        Func<Error, TResult> onFailure)
+    {
+        return IsSuccess ? onSuccess() : onFailure(Error);
+    }
 }
 
-public class Result<T> : Result
+public class Result<TValue> : Result
 {
-    private readonly T? _value;
+    private readonly TValue? _value;
 
-    public T Value => IsSuccess 
+    public TValue Value => IsSuccess 
         ? _value! 
         : throw new InvalidOperationException("The value of a failure result can not be accessed.");
 
-    protected Result(T? value, bool isSuccess, string error, int statusCode) 
-        : base(isSuccess, error, statusCode)
+    protected Result(TValue? value, bool isSuccess, Error error) 
+        : base(isSuccess, error)
     {
         _value = value;
     }
 
-    public static Result<T> Success(T value, int statusCode = 200) => new(value, true, string.Empty, statusCode);
-    public static new Result<T> Failure(string error, int statusCode = 400) => new(default, false, error, statusCode);
+    public static Result<TValue> Success(TValue value) => new(value, true, Error.None);
+    public static new Result<TValue> Failure(Error error) => new(default, false, error);
+    public static new Result<TValue> Failure(string message, ErrorType type = ErrorType.Failure) => Failure(new Error(message, type));
+
+    public TResult Match<TResult>(
+        Func<TValue, TResult> onSuccess,
+        Func<Error, TResult> onFailure)
+    {
+        return IsSuccess ? onSuccess(_value!) : onFailure(Error);
+    }
 }

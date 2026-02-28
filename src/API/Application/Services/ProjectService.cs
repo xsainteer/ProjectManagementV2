@@ -36,14 +36,14 @@ public class ProjectService : IProjectService
         {
             var project = await _projectRepository.GetByIdAsync(id, true, cancellationToken);
             if (project == null)
-                return Result<ProjectDto>.Failure("Project not found", 404);
+                return Result<ProjectDto>.Failure(Error.NotFound($"Project with ID {id} was not found."));
 
-            return Result<ProjectDto>.Success(MapToDto(project), 200);
+            return Result<ProjectDto>.Success(MapToDto(project));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while getting project with ID {ProjectId}", id);
-            return Result<ProjectDto>.Failure("An internal error occurred", 500);
+            return Result<ProjectDto>.Failure(Error.Unexpected("An internal error occurred"));
         }
     }
 
@@ -52,12 +52,12 @@ public class ProjectService : IProjectService
         try
         {
             var projects = await _projectRepository.GetAllAsync(true, cancellationToken);
-            return Result<IEnumerable<ProjectDto>>.Success(projects.Select(MapToDto), 200);
+            return Result<IEnumerable<ProjectDto>>.Success(projects.Select(MapToDto));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while getting all projects");
-            return Result<IEnumerable<ProjectDto>>.Failure("An internal error occurred", 500);
+            return Result<IEnumerable<ProjectDto>>.Failure(Error.Unexpected("An internal error occurred"));
         }
     }
 
@@ -76,12 +76,12 @@ public class ProjectService : IProjectService
             var (items, totalCount) = await _projectRepository.GetProjectsAsync(
                 startDateFrom, startDateTo, priority, sortBy, sortDescending, pageNumber, pageSize, true, cancellationToken);
 
-            return Result<(IEnumerable<ProjectDto>, int)>.Success((items.Select(MapToDto), totalCount), 200);
+            return Result<(IEnumerable<ProjectDto>, int)>.Success((items.Select(MapToDto), totalCount));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while filtering projects");
-            return Result<(IEnumerable<ProjectDto>, int)>.Failure("An internal error occurred", 500);
+            return Result<(IEnumerable<ProjectDto>, int)>.Failure(Error.Unexpected("An internal error occurred"));
         }
     }
 
@@ -91,11 +91,11 @@ public class ProjectService : IProjectService
         {
             var validationResult = await _createValidator.ValidateAsync(createDto, cancellationToken);
             if (!validationResult.IsValid)
-                return Result<ProjectDto>.Failure(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage)), 400);
+                return Result<ProjectDto>.Failure(Error.Validation(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
 
             var manager = await _employeeRepository.GetByIdAsync(createDto.ProjectManagerId, true, cancellationToken);
             if (manager == null)
-                return Result<ProjectDto>.Failure("Project manager not found", 400);
+                return Result<ProjectDto>.Failure(Error.NotFound($"Project manager with ID {createDto.ProjectManagerId} was not found."));
 
             var project = new Project
             {
@@ -111,12 +111,12 @@ public class ProjectService : IProjectService
             await _projectRepository.AddAsync(project, cancellationToken);
             await _projectRepository.SaveChangesAsync(cancellationToken);
 
-            return Result<ProjectDto>.Success(MapToDto(project), 201);
+            return Result<ProjectDto>.Success(MapToDto(project));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while creating project");
-            return Result<ProjectDto>.Failure("An internal error occurred", 500);
+            return Result<ProjectDto>.Failure(Error.Unexpected("An internal error occurred"));
         }
     }
 
@@ -126,17 +126,17 @@ public class ProjectService : IProjectService
         {
             var validationResult = await _updateValidator.ValidateAsync(updateDto, cancellationToken);
             if (!validationResult.IsValid)
-                return Result.Failure(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage)), 400);
+                return Result.Failure(Error.Validation(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
 
             var project = await _projectRepository.GetByIdAsync(updateDto.Id, false, cancellationToken);
             if (project == null)
-                return Result.Failure("Project not found", 404);
+                return Result.Failure(Error.NotFound($"Project with ID {updateDto.Id} was not found."));
 
             if (project.ProjectManagerId != updateDto.ProjectManagerId)
             {
                 var manager = await _employeeRepository.GetByIdAsync(updateDto.ProjectManagerId, true, cancellationToken);
                 if (manager == null)
-                    return Result.Failure("Project manager not found", 400);
+                    return Result.Failure(Error.NotFound($"Project manager with ID {updateDto.ProjectManagerId} was not found."));
             }
 
             project.Name = updateDto.Name;
@@ -150,12 +150,12 @@ public class ProjectService : IProjectService
             _projectRepository.Update(project);
             await _projectRepository.SaveChangesAsync(cancellationToken);
 
-            return Result.Success(204);
+            return Result.Success();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while updating project with ID {ProjectId}", updateDto.Id);
-            return Result.Failure("An internal error occurred", 500);
+            return Result.Failure(Error.Unexpected("An internal error occurred"));
         }
     }
 
@@ -165,17 +165,17 @@ public class ProjectService : IProjectService
         {
             var project = await _projectRepository.GetByIdAsync(id, false, cancellationToken);
             if (project == null)
-                return Result.Failure("Project not found", 404);
+                return Result.Failure(Error.NotFound($"Project with ID {id} was not found."));
 
             _projectRepository.Delete(project);
             await _projectRepository.SaveChangesAsync(cancellationToken);
 
-            return Result.Success(204);
+            return Result.Success();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while deleting project with ID {ProjectId}", id);
-            return Result.Failure("An internal error occurred", 500);
+            return Result.Failure(Error.Unexpected("An internal error occurred"));
         }
     }
 

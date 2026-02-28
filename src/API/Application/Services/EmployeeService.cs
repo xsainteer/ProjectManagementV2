@@ -3,6 +3,7 @@ using Application.Interfaces;
 using Application.Interfaces.Services;
 using Domain.Common;
 using Domain.Entities;
+using FluentValidation;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Services;
@@ -11,11 +12,19 @@ public class EmployeeService : IEmployeeService
 {
     private readonly IEmployeeRepository _employeeRepository;
     private readonly ILogger<EmployeeService> _logger;
+    private readonly IValidator<CreateEmployeeDto> _createValidator;
+    private readonly IValidator<UpdateEmployeeDto> _updateValidator;
 
-    public EmployeeService(IEmployeeRepository employeeRepository, ILogger<EmployeeService> logger)
+    public EmployeeService(
+        IEmployeeRepository employeeRepository, 
+        ILogger<EmployeeService> logger,
+        IValidator<CreateEmployeeDto> createValidator,
+        IValidator<UpdateEmployeeDto> updateValidator)
     {
         _employeeRepository = employeeRepository;
         _logger = logger;
+        _createValidator = createValidator;
+        _updateValidator = updateValidator;
     }
 
     public async Task<Result<EmployeeDto>> GetByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -24,7 +33,7 @@ public class EmployeeService : IEmployeeService
         {
             var employee = await _employeeRepository.GetByIdAsync(id, true, cancellationToken);
             if (employee == null)
-                return Result<EmployeeDto>.Failure("Employee not found", 404);
+                return Result<EmployeeDto>.Failure(Error.NotFound($"Employee with ID {id} was not found."));
 
             return Result<EmployeeDto>.Success(new EmployeeDto(
                 employee.Id,
@@ -32,12 +41,12 @@ public class EmployeeService : IEmployeeService
                 employee.LastName,
                 employee.MiddleName,
                 employee.Email
-            ), 200);
+            ));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while getting employee with ID {EmployeeId}", id);
-            return Result<EmployeeDto>.Failure("An internal error occurred", 500);
+            return Result<EmployeeDto>.Failure(Error.Unexpected("An internal error occurred"));
         }
     }
 
@@ -54,12 +63,12 @@ public class EmployeeService : IEmployeeService
                 e.Email
             ));
 
-            return Result<IEnumerable<EmployeeDto>>.Success(dtos, 200);
+            return Result<IEnumerable<EmployeeDto>>.Success(dtos);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while getting all employees");
-            return Result<IEnumerable<EmployeeDto>>.Failure("An internal error occurred", 500);
+            return Result<IEnumerable<EmployeeDto>>.Failure(Error.Unexpected("An internal error occurred"));
         }
     }
 
@@ -67,6 +76,10 @@ public class EmployeeService : IEmployeeService
     {
         try
         {
+            var validationResult = await _createValidator.ValidateAsync(createDto, cancellationToken);
+            if (!validationResult.IsValid)
+                return Result<EmployeeDto>.Failure(Error.Validation(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
+
             var employee = new Employee
             {
                 FirstName = createDto.FirstName,
@@ -84,12 +97,12 @@ public class EmployeeService : IEmployeeService
                 employee.LastName,
                 employee.MiddleName,
                 employee.Email
-            ), 201);
+            ));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while creating employee");
-            return Result<EmployeeDto>.Failure("An internal error occurred", 500);
+            return Result<EmployeeDto>.Failure(Error.Unexpected("An internal error occurred"));
         }
     }
 
@@ -97,9 +110,13 @@ public class EmployeeService : IEmployeeService
     {
         try
         {
+            var validationResult = await _updateValidator.ValidateAsync(updateDto, cancellationToken);
+            if (!validationResult.IsValid)
+                return Result.Failure(Error.Validation(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
+
             var employee = await _employeeRepository.GetByIdAsync(updateDto.Id, false, cancellationToken);
             if (employee == null)
-                return Result.Failure("Employee not found", 404);
+                return Result.Failure(Error.NotFound($"Employee with ID {updateDto.Id} was not found."));
 
             employee.FirstName = updateDto.FirstName;
             employee.LastName = updateDto.LastName;
@@ -109,12 +126,12 @@ public class EmployeeService : IEmployeeService
             _employeeRepository.Update(employee);
             await _employeeRepository.SaveChangesAsync(cancellationToken);
 
-            return Result.Success(204);
+            return Result.Success();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while updating employee with ID {EmployeeId}", updateDto.Id);
-            return Result.Failure("An internal error occurred", 500);
+            return Result.Failure(Error.Unexpected("An internal error occurred"));
         }
     }
 
@@ -124,17 +141,17 @@ public class EmployeeService : IEmployeeService
         {
             var employee = await _employeeRepository.GetByIdAsync(id, false, cancellationToken);
             if (employee == null)
-                return Result.Failure("Employee not found", 404);
+                return Result.Failure(Error.NotFound($"Employee with ID {id} was not found."));
 
             _employeeRepository.Delete(employee);
             await _employeeRepository.SaveChangesAsync(cancellationToken);
 
-            return Result.Success(204);
+            return Result.Success();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error occurred while deleting employee with ID {EmployeeId}", id);
-            return Result.Failure("An internal error occurred", 500);
+            return Result.Failure(Error.Unexpected("An internal error occurred"));
         }
     }
 }
