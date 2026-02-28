@@ -20,4 +20,7 @@ public class Project
 
     // Tasks belonging to the project (One-to-Many)
     public ICollection<ProjectTask> Tasks { get; set; } = new List<ProjectTask>();
+    
+    // Documents related to the project (One-to-Many)
+    public ICollection<ProjectDocument> Documents { get; set; } = new List<ProjectDocument>();
 }
