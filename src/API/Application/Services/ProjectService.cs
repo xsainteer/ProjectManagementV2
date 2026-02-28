@@ -3,6 +3,7 @@ using Application.Interfaces;
 using Application.Interfaces.Services;
 using Domain.Common;
 using Domain.Entities;
+using FluentValidation;
 using Microsoft.Extensions.Logging;
 
 namespace Application.Services;
@@ -12,15 +13,21 @@ public class ProjectService : IProjectService
     private readonly IProjectRepository _projectRepository;
     private readonly IEmployeeRepository _employeeRepository;
     private readonly ILogger<ProjectService> _logger;
+    private readonly IValidator<CreateProjectDto> _createValidator;
+    private readonly IValidator<UpdateProjectDto> _updateValidator;
 
     public ProjectService(
         IProjectRepository projectRepository, 
         IEmployeeRepository employeeRepository,
-        ILogger<ProjectService> logger)
+        ILogger<ProjectService> logger,
+        IValidator<CreateProjectDto> createValidator,
+        IValidator<UpdateProjectDto> updateValidator)
     {
         _projectRepository = projectRepository;
         _employeeRepository = employeeRepository;
         _logger = logger;
+        _createValidator = createValidator;
+        _updateValidator = updateValidator;
     }
 
     public async Task<Result<ProjectDto>> GetByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -82,6 +89,10 @@ public class ProjectService : IProjectService
     {
         try
         {
+            var validationResult = await _createValidator.ValidateAsync(createDto, cancellationToken);
+            if (!validationResult.IsValid)
+                return Result<ProjectDto>.Failure(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage)), 400);
+
             var manager = await _employeeRepository.GetByIdAsync(createDto.ProjectManagerId, true, cancellationToken);
             if (manager == null)
                 return Result<ProjectDto>.Failure("Project manager not found", 400);
@@ -113,6 +124,10 @@ public class ProjectService : IProjectService
     {
         try
         {
+            var validationResult = await _updateValidator.ValidateAsync(updateDto, cancellationToken);
+            if (!validationResult.IsValid)
+                return Result.Failure(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage)), 400);
+
             var project = await _projectRepository.GetByIdAsync(updateDto.Id, false, cancellationToken);
             if (project == null)
                 return Result.Failure("Project not found", 404);
