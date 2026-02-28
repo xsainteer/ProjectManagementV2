@@ -1,5 +1,6 @@
 using Application.Extensions;
 using Infrastructure.Extensions;
+using Presentation.Endpoints;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,5 +18,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.MapProjectEndpoints();
 
 app.Run();
