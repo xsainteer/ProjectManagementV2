@@ -22,8 +22,8 @@ public interface IProjectRepository : IRepository<Project>
         bool asNoTracking = true,
         CancellationToken cancellationToken = default);
 
-    Task<Project> CreateFullAsync(Project project, List<int> executorIds, List<FileData> files, CancellationToken cancellationToken = default);
     Task<Project?> GetWithEmployeesAsync(int id, CancellationToken cancellationToken = default);
+    Task<ITransaction> BeginTransactionAsync(CancellationToken cancellationToken = default);
 }
 
 public interface IProjectTaskRepository : IRepository<ProjectTask>

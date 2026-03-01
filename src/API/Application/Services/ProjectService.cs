@@ -11,6 +11,7 @@ public class ProjectService : IProjectService
 {
     private readonly IProjectRepository _projectRepository;
     private readonly IEmployeeRepository _employeeRepository;
+    private readonly IFileService _fileService;
     private readonly IValidator<CreateProjectDto> _createValidator;
     private readonly IValidator<CreateFullProjectDto> _createFullValidator;
     private readonly IValidator<UpdateProjectDto> _updateValidator;
@@ -18,12 +19,14 @@ public class ProjectService : IProjectService
     public ProjectService(
         IProjectRepository projectRepository, 
         IEmployeeRepository employeeRepository,
+        IFileService fileService,
         IValidator<CreateProjectDto> createValidator,
         IValidator<CreateFullProjectDto> createFullValidator,
         IValidator<UpdateProjectDto> updateValidator)
     {
         _projectRepository = projectRepository;
         _employeeRepository = employeeRepository;
+        _fileService = fileService;
         _createValidator = createValidator;
         _createFullValidator = createFullValidator;
         _updateValidator = updateValidator;
@@ -93,20 +96,72 @@ public class ProjectService : IProjectService
         if (!validationResult.IsValid)
             return Result<ProjectDto>.Failure(Error.Validation(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
 
-        var project = new Project
+        var manager = await _employeeRepository.GetByIdAsync(createDto.ProjectManagerId, true, cancellationToken);
+        if (manager == null)
+            return Result<ProjectDto>.Failure(Error.NotFound($"Project manager with ID {createDto.ProjectManagerId} was not found."));
+
+        await using var transaction = await _projectRepository.BeginTransactionAsync(cancellationToken);
+        var savedFilePaths = new List<string>();
+
+        try
         {
-            Name = createDto.Name,
-            CustomerCompany = createDto.CustomerCompany,
-            PerformerCompany = createDto.PerformerCompany,
-            ProjectManagerId = createDto.ProjectManagerId,
-            StartDate = createDto.StartDate,
-            EndDate = createDto.EndDate,
-            Priority = createDto.Priority
-        };
+            var project = new Project
+            {
+                Name = createDto.Name,
+                CustomerCompany = createDto.CustomerCompany,
+                PerformerCompany = createDto.PerformerCompany,
+                ProjectManagerId = createDto.ProjectManagerId,
+                StartDate = createDto.StartDate,
+                EndDate = createDto.EndDate,
+                Priority = createDto.Priority
+            };
 
-        var createdProject = await _projectRepository.CreateFullAsync(project, createDto.ExecutorIds, files, cancellationToken);
+            // 1. Add Executors
+            foreach (var executorId in createDto.ExecutorIds)
+            {
+                var executor = await _employeeRepository.GetByIdAsync(executorId, false, cancellationToken);
+                if (executor == null)
+                    return Result<ProjectDto>.Failure(Error.NotFound($"Executor with ID {executorId} was not found."));
+                
+                project.Employees.Add(executor);
+            }
 
-        return Result<ProjectDto>.Success(MapToDto(createdProject));
+            // 2. Save Project to get ID
+            await _projectRepository.AddAsync(project, cancellationToken);
+            await _projectRepository.SaveChangesAsync(cancellationToken);
+
+            // 3. Handle Files
+            foreach (var file in files)
+            {
+                var saveResult = await _fileService.SaveFileAsync(file.Stream, file.FileName, $"project_{project.Id}", cancellationToken);
+                if (saveResult.IsFailure)
+                    throw new Exception(saveResult.Error.Message); // Caught by local try-catch for cleanup
+                
+                savedFilePaths.Add(saveResult.Value);
+                
+                project.Documents.Add(new ProjectDocument
+                {
+                    FileName = file.FileName,
+                    FilePath = saveResult.Value,
+                    ProjectId = project.Id
+                });
+            }
+
+            // 4. Final save (for documents)
+            await _projectRepository.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return Result<ProjectDto>.Success(MapToDto(project));
+        }
+        catch (Exception)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            foreach (var path in savedFilePaths)
+            {
+                _fileService.DeleteFile(path);
+            }
+            throw; // GlobalExceptionHandler will catch this
+        }
     }
 
     public async Task<Result> UpdateAsync(UpdateProjectDto updateDto, CancellationToken cancellationToken = default)

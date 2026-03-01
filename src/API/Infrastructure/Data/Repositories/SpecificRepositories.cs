@@ -4,6 +4,7 @@ using Application.Interfaces.Services;
 using Domain.Entities;
 using Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Infrastructure.Data.Repositories;
 
@@ -34,11 +35,8 @@ public class EmployeeRepository : Repository<Employee>, IEmployeeRepository
 
 public class ProjectRepository : Repository<Project>, IProjectRepository
 {
-    private readonly IFileService _fileService;
-
-    public ProjectRepository(AppDbContext context, IFileService fileService) : base(context)
+    public ProjectRepository(AppDbContext context) : base(context)
     {
-        _fileService = fileService;
     }
 
     public async Task<(IEnumerable<Project> Items, int TotalCount)> GetProjectsAsync(
@@ -89,70 +87,42 @@ public class ProjectRepository : Repository<Project>, IProjectRepository
         return (items, totalCount);
     }
 
-    public async Task<Project> CreateFullAsync(Project project, List<int> executorIds, List<FileData> files, CancellationToken cancellationToken = default)
-    {
-        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-        var savedFilePaths = new List<string>();
-
-        try
-        {
-            // 2. Add Executors
-            project.Employees = new List<Employee>();
-            foreach (var executorId in executorIds)
-            {
-                var executor = await _context.Employees.FindAsync(new object[] { executorId }, cancellationToken);
-                if (executor == null)
-                {
-                    throw new Exception($"Executor with ID {executorId} was not found.");
-                }
-                project.Employees.Add(executor);
-            }
-
-            // 3. Save Project to get ID
-            await _dbSet.AddAsync(project, cancellationToken);
-            await _context.SaveChangesAsync(cancellationToken);
-
-            // 4. Handle Files
-            foreach (var file in files)
-            {
-                var saveResult = await _fileService.SaveFileAsync(file.Stream, file.FileName, $"project_{project.Id}", cancellationToken);
-                if (saveResult.IsFailure)
-                {
-                    throw new Exception(saveResult.Error.Message);
-                }
-                
-                savedFilePaths.Add(saveResult.Value);
-                
-                project.Documents.Add(new ProjectDocument
-                {
-                    FileName = file.FileName,
-                    FilePath = saveResult.Value,
-                    ProjectId = project.Id
-                });
-            }
-
-            // 5. Final save (for documents)
-            await _context.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
-
-            return project;
-        }
-        catch (Exception)
-        {
-            await transaction.RollbackAsync(cancellationToken);
-            foreach (var path in savedFilePaths)
-            {
-                _fileService.DeleteFile(path);
-            }
-            throw;
-        }
-    }
-
     public async Task<Project?> GetWithEmployeesAsync(int id, CancellationToken cancellationToken = default)
     {
         return await _dbSet
             .Include(p => p.Employees)
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+    }
+
+    public async Task<ITransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+    {
+        var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        return new EfTransaction(transaction);
+    }
+}
+
+public class EfTransaction : ITransaction
+{
+    private readonly IDbContextTransaction _transaction;
+
+    public EfTransaction(IDbContextTransaction transaction)
+    {
+        _transaction = transaction;
+    }
+
+    public async Task CommitAsync(CancellationToken cancellationToken = default)
+    {
+        await _transaction.CommitAsync(cancellationToken);
+    }
+
+    public async Task RollbackAsync(CancellationToken cancellationToken = default)
+    {
+        await _transaction.RollbackAsync(cancellationToken);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _transaction.DisposeAsync();
     }
 }
 
