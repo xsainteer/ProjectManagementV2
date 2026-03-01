@@ -14,19 +14,34 @@ public class GlobalExceptionHandler(
         Exception exception,
         CancellationToken cancellationToken)
     {
-        logger.LogError(exception, "Unhandled exception occurred: {Message}", exception.Message);
-
-        var statusCode = exception switch
+        if (exception is OperationCanceledException)
         {
-            UnauthorizedAccessException => StatusCodes.Status401Unauthorized,
-            KeyNotFoundException => StatusCodes.Status404NotFound,
-            _ => StatusCodes.Status500InternalServerError
+            logger.LogInformation("Request was cancelled by the client.");
+            return true; 
+        }
+
+        logger.LogError(exception, "Unhandled exception: {Message}", exception.Message);
+
+        var (statusCode, title, customDetail) = exception switch
+        {
+            UnauthorizedAccessException => 
+                (StatusCodes.Status401Unauthorized, "Unauthorized Access", null),
+            
+            KeyNotFoundException => 
+                (StatusCodes.Status404NotFound, "Resource Not Found", null),
+            
+            Microsoft.EntityFrameworkCore.DbUpdateException dbEx 
+                when dbEx.InnerException is Microsoft.Data.SqlClient.SqlException sqlEx && sqlEx.Number == 547 
+                => (StatusCodes.Status400BadRequest, 
+                    "Data Integrity Violation", 
+                    "This record cannot be deleted or modified because it is currently in use by another part of the system."),
+        
+            _ => (StatusCodes.Status500InternalServerError, "Internal Server Error", (string?)null)
         };
 
-        
-        string detail = env.IsDevelopment() 
+        string detail = customDetail ?? (env.IsDevelopment() 
             ? exception.ToString() 
-            : "An unexpected error occurred. Please try again later.";
+            : "An unexpected error occurred. Please try again later.");
 
         httpContext.Response.StatusCode = statusCode;
 
@@ -36,7 +51,7 @@ public class GlobalExceptionHandler(
             ProblemDetails = new ProblemDetails
             {
                 Status = statusCode,
-                Title = "An error occurred",
+                Title = title,
                 Detail = detail,
                 Instance = httpContext.Request.Path
             }
