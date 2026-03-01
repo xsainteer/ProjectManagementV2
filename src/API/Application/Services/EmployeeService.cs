@@ -1,6 +1,7 @@
 using Application.DTOs.Employee;
 using Application.Interfaces;
 using Application.Interfaces.Services;
+using Application.Mappings;
 using Application.Validators;
 using Domain.Common;
 using Domain.Entities;
@@ -30,13 +31,13 @@ public class EmployeeService : IEmployeeService
         if (employee == null)
             return Result<EmployeeDto>.Failure(Error.NotFound($"Employee with ID {id} was not found."));
 
-        return Result<EmployeeDto>.Success(MapToDto(employee));
+        return Result<EmployeeDto>.Success(employee.ToDto());
     }
 
     public async Task<Result<IEnumerable<EmployeeDto>>> GetAllAsync(string? searchTerm, CancellationToken cancellationToken = default)
     {
         var employees = await _employeeRepository.GetAllAsync(searchTerm, true, cancellationToken);
-        return Result<IEnumerable<EmployeeDto>>.Success(employees.Select(MapToDto));
+        return Result<IEnumerable<EmployeeDto>>.Success(employees.Select(e => e.ToDto()));
     }
 
     public async Task<Result<IEnumerable<EmployeeDto>>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -60,7 +61,7 @@ public class EmployeeService : IEmployeeService
         await _employeeRepository.AddAsync(employee, cancellationToken);
         await _employeeRepository.SaveChangesAsync(cancellationToken);
 
-        return Result<EmployeeDto>.Success(MapToDto(employee));
+        return Result<EmployeeDto>.Success(employee.ToDto());
     }
 
     public async Task<Result> UpdateAsync(UpdateEmployeeDto updateDto, CancellationToken cancellationToken = default)
@@ -94,12 +95,4 @@ public class EmployeeService : IEmployeeService
 
         return Result.Success();
     }
-
-    private static EmployeeDto MapToDto(Employee employee) => new(
-        employee.Id,
-        employee.FirstName,
-        employee.LastName,
-        employee.MiddleName,
-        employee.Email
-    );
 }

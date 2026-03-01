@@ -1,6 +1,7 @@
 using Application.DTOs.Project;
 using Application.Interfaces;
 using Application.Interfaces.Services;
+using Application.Mappings;
 using Application.Validators;
 using Domain.Common;
 using Domain.Entities;
@@ -39,13 +40,13 @@ public class ProjectService : IProjectService
         if (project == null)
             return Result<ProjectDto>.Failure(Error.NotFound($"Project with ID {id} was not found."));
 
-        return Result<ProjectDto>.Success(MapToDto(project));
+        return Result<ProjectDto>.Success(project.ToDto());
     }
 
     public async Task<Result<IEnumerable<ProjectDto>>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var projects = await _projectRepository.GetAllAsync(true, cancellationToken);
-        return Result<IEnumerable<ProjectDto>>.Success(projects.Select(MapToDto));
+        return Result<IEnumerable<ProjectDto>>.Success(projects.Select(p => p.ToDto()));
     }
 
     public async Task<Result<PaginatedResultDto<ProjectDto>>> GetProjectsAsync(
@@ -61,7 +62,7 @@ public class ProjectService : IProjectService
         var (items, totalCount) = await _projectRepository.GetProjectsAsync(
             startDateFrom, startDateTo, priority, sortBy, sortDescending, pageNumber, pageSize, true, cancellationToken);
 
-        return Result<PaginatedResultDto<ProjectDto>>.Success(new PaginatedResultDto<ProjectDto>(items.Select(MapToDto), totalCount));
+        return Result<PaginatedResultDto<ProjectDto>>.Success(new PaginatedResultDto<ProjectDto>(items.Select(p => p.ToDto()), totalCount));
     }
 
     public async Task<Result<ProjectDto>> CreateAsync(CreateProjectDto createDto, CancellationToken cancellationToken = default)
@@ -87,7 +88,7 @@ public class ProjectService : IProjectService
         await _projectRepository.AddAsync(project, cancellationToken);
         await _projectRepository.SaveChangesAsync(cancellationToken);
 
-        return Result<ProjectDto>.Success(MapToDto(project));
+        return Result<ProjectDto>.Success(project.ToDto());
     }
 
     public async Task<Result<ProjectDto>> CreateFullAsync(CreateFullProjectDto createDto, List<FileData> files, CancellationToken cancellationToken = default)
@@ -145,7 +146,7 @@ public class ProjectService : IProjectService
             await _projectRepository.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
 
-            return Result<ProjectDto>.Success(MapToDto(project));
+            return Result<ProjectDto>.Success(project.ToDto());
         }
         catch (Exception)
         {
@@ -231,15 +232,4 @@ public class ProjectService : IProjectService
 
         return Result.Success();
     }
-
-    private static ProjectDto MapToDto(Project project) => new(
-        project.Id,
-        project.Name,
-        project.CustomerCompany,
-        project.PerformerCompany,
-        project.ProjectManagerId,
-        project.StartDate,
-        project.EndDate,
-        project.Priority
-    );
 }

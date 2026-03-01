@@ -1,6 +1,7 @@
 using Application.DTOs.ProjectDocument;
 using Application.Interfaces;
 using Application.Interfaces.Services;
+using Application.Mappings;
 using Application.Validators;
 using Domain.Common;
 using Domain.Entities;
@@ -36,13 +37,13 @@ public class ProjectDocumentService : IProjectDocumentService
         if (document == null)
             return Result<ProjectDocumentDto>.Failure(Error.NotFound($"Document with ID {id} was not found."));
 
-        return Result<ProjectDocumentDto>.Success(MapToDto(document));
+        return Result<ProjectDocumentDto>.Success(document.ToDto());
     }
 
     public async Task<Result<IEnumerable<ProjectDocumentDto>>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var documents = await _documentRepository.GetAllAsync(true, cancellationToken);
-        return Result<IEnumerable<ProjectDocumentDto>>.Success(documents.Select(MapToDto));
+        return Result<IEnumerable<ProjectDocumentDto>>.Success(documents.Select(d => d.ToDto()));
     }
 
     public async Task<Result<ProjectDocumentDto>> CreateAsync(CreateProjectDocumentDto createDto, CancellationToken cancellationToken = default)
@@ -89,7 +90,7 @@ public class ProjectDocumentService : IProjectDocumentService
             
             await transaction.CommitAsync(cancellationToken);
 
-            return Result<ProjectDocumentDto>.Success(MapToDto(document));
+            return Result<ProjectDocumentDto>.Success(document.ToDto());
         }
         catch (Exception)
         {
@@ -194,11 +195,4 @@ public class ProjectDocumentService : IProjectDocumentService
 
         return _fileService.GetFileStream(document.FilePath);
     }
-
-    private static ProjectDocumentDto MapToDto(ProjectDocument document) => new(
-        document.Id,
-        document.FileName,
-        document.FilePath,
-        document.ProjectId
-    );
 }

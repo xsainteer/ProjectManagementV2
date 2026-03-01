@@ -1,6 +1,7 @@
 using Application.DTOs.ProjectTask;
 using Application.Interfaces;
 using Application.Interfaces.Services;
+using Application.Mappings;
 using Application.Validators;
 using Domain.Common;
 using Domain.Entities;
@@ -36,13 +37,13 @@ public class ProjectTaskService : IProjectTaskService
         if (task == null)
             return Result<ProjectTaskDto>.Failure(Error.NotFound($"Task with ID {id} was not found."));
 
-        return Result<ProjectTaskDto>.Success(MapToDto(task));
+        return Result<ProjectTaskDto>.Success(task.ToDto());
     }
 
     public async Task<Result<IEnumerable<ProjectTaskDto>>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var tasks = await _taskRepository.GetAllAsync(true, cancellationToken);
-        return Result<IEnumerable<ProjectTaskDto>>.Success(tasks.Select(MapToDto));
+        return Result<IEnumerable<ProjectTaskDto>>.Success(tasks.Select(t => t.ToDto()));
     }
 
     public async Task<Result<ProjectTaskDto>> CreateAsync(CreateProjectTaskDto createDto, CancellationToken cancellationToken = default)
@@ -74,7 +75,7 @@ public class ProjectTaskService : IProjectTaskService
         await _taskRepository.AddAsync(task, cancellationToken);
         await _taskRepository.SaveChangesAsync(cancellationToken);
 
-        return Result<ProjectTaskDto>.Success(MapToDto(task));
+        return Result<ProjectTaskDto>.Success(task.ToDto());
     }
 
     public async Task<Result> UpdateAsync(UpdateProjectTaskDto updateDto, CancellationToken cancellationToken = default)
@@ -125,15 +126,4 @@ public class ProjectTaskService : IProjectTaskService
     {
         return project.ProjectManagerId == employeeId || project.Employees.Any(e => e.Id == employeeId);
     }
-
-    private static ProjectTaskDto MapToDto(ProjectTask task) => new(
-        task.Id,
-        task.Name,
-        task.AuthorId,
-        task.ExecutorId,
-        task.Status,
-        task.Comment,
-        task.Priority,
-        task.ProjectId
-    );
 }
