@@ -93,37 +93,6 @@ public class ProjectRepository : Repository<Project>, IProjectRepository
             .Include(p => p.Employees)
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
     }
-
-    public async Task<ITransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
-    {
-        var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-        return new EfTransaction(transaction);
-    }
-}
-
-public class EfTransaction : ITransaction
-{
-    private readonly IDbContextTransaction _transaction;
-
-    public EfTransaction(IDbContextTransaction transaction)
-    {
-        _transaction = transaction;
-    }
-
-    public async Task CommitAsync(CancellationToken cancellationToken = default)
-    {
-        await _transaction.CommitAsync(cancellationToken);
-    }
-
-    public async Task RollbackAsync(CancellationToken cancellationToken = default)
-    {
-        await _transaction.RollbackAsync(cancellationToken);
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        await _transaction.DisposeAsync();
-    }
 }
 
 public class ProjectTaskRepository : Repository<ProjectTask>, IProjectTaskRepository

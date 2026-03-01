@@ -17,10 +17,10 @@ public class ProjectServiceTests
 {
     private Mock<IProjectRepository> _projectRepositoryMock;
     private Mock<IEmployeeRepository> _employeeRepositoryMock;
-    private Mock<ILogger<ProjectService>> _loggerMock;
     private Mock<IValidator<CreateProjectDto>> _createValidatorMock;
     private Mock<IValidator<CreateFullProjectDto>> _createFullValidatorMock;
     private Mock<IValidator<UpdateProjectDto>> _updateValidatorMock;
+    private Mock<IFileService> _fileServiceMock;
     private ProjectService _projectService;
 
     [SetUp]
@@ -31,10 +31,12 @@ public class ProjectServiceTests
         _createValidatorMock = new Mock<IValidator<CreateProjectDto>>();
         _createFullValidatorMock = new Mock<IValidator<CreateFullProjectDto>>();
         _updateValidatorMock = new Mock<IValidator<UpdateProjectDto>>();
+        _fileServiceMock = new Mock<IFileService>();
 
         _projectService = new ProjectService(
             _projectRepositoryMock.Object,
             _employeeRepositoryMock.Object,
+            _fileServiceMock.Object,
             _createValidatorMock.Object,
             _createFullValidatorMock.Object,
             _updateValidatorMock.Object);

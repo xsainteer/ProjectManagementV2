@@ -64,39 +64,41 @@ public class ProjectDocumentService : IProjectDocumentService
         if (await _projectRepository.GetByIdAsync(createDto.ProjectId, true, cancellationToken) == null)
             return Result<ProjectDocumentDto>.Failure(Error.NotFound($"Project with ID {createDto.ProjectId} was not found."));
 
-        string? savedFilePath = null;
-        if (fileStream != null && fileName != null)
-        {
-            var saveResult = await _fileService.SaveFileAsync(fileStream, fileName, $"project_{createDto.ProjectId}", cancellationToken);
-            if (saveResult.IsFailure)
-                return Result<ProjectDocumentDto>.Failure(saveResult.Error);
-            
-            savedFilePath = saveResult.Value;
-        }
-
-        var document = new ProjectDocument
-        {
-            FileName = fileName ?? createDto.FileName,
-            FilePath = savedFilePath ?? createDto.FilePath,
-            ProjectId = createDto.ProjectId
-        };
+        await using var transaction = await _documentRepository.BeginTransactionAsync(cancellationToken);
+        var savedFilePath = String.Empty;
 
         try
         {
+            if (fileStream != null && fileName != null)
+            {
+                var saveResult = await _fileService.SaveFileAsync(fileStream, fileName, $"project_{createDto.ProjectId}", cancellationToken);
+                if (saveResult.IsFailure)
+                    return Result<ProjectDocumentDto>.Failure(saveResult.Error);
+                
+                savedFilePath = saveResult.Value;
+            }
+
+            var document = new ProjectDocument
+            {
+                FileName = fileName ?? createDto.FileName,
+                FilePath = savedFilePath,
+                ProjectId = createDto.ProjectId
+            };
+
             await _documentRepository.AddAsync(document, cancellationToken);
             await _documentRepository.SaveChangesAsync(cancellationToken);
+            
+            await transaction.CommitAsync(cancellationToken);
+
+            return Result<ProjectDocumentDto>.Success(MapToDto(document));
         }
         catch (Exception)
         {
+            await transaction.RollbackAsync(cancellationToken);
             // Atomicity: If DB save fails, delete the file if we saved one
-            if (savedFilePath != null)
-            {
-                _fileService.DeleteFile(savedFilePath);
-            }
+            _fileService.DeleteFile(savedFilePath);
             throw;
         }
-
-        return Result<ProjectDocumentDto>.Success(MapToDto(document));
     }
 
     public async Task<Result> UpdateAsync(ProjectDocumentDto updateDto, CancellationToken cancellationToken = default)
@@ -117,40 +119,46 @@ public class ProjectDocumentService : IProjectDocumentService
         if (document.ProjectId != updateDto.ProjectId && await _projectRepository.GetByIdAsync(updateDto.ProjectId, true, cancellationToken) == null)
             return Result.Failure(Error.NotFound($"Project with ID {updateDto.ProjectId} was not found."));
 
+        await using var transaction = await _documentRepository.BeginTransactionAsync(cancellationToken);
         string? oldFilePath = document.FilePath;
         string? newFilePath = null;
 
-        if (fileStream != null && fileName != null)
-        {
-            var saveResult = await _fileService.SaveFileAsync(fileStream, fileName, $"project_{updateDto.ProjectId}", cancellationToken);
-            if (saveResult.IsFailure)
-                return Result.Failure(saveResult.Error);
-            
-            newFilePath = saveResult.Value;
-            document.FileName = fileName;
-            document.FilePath = newFilePath;
-        }
-        else
-        {
-            document.FileName = updateDto.FileName;
-            document.FilePath = updateDto.FilePath;
-        }
-
-        document.ProjectId = updateDto.ProjectId;
-
         try
         {
+            if (fileStream != null && fileName != null)
+            {
+                var saveResult = await _fileService.SaveFileAsync(fileStream, fileName, $"project_{updateDto.ProjectId}", cancellationToken);
+                if (saveResult.IsFailure)
+                    return Result.Failure(saveResult.Error);
+                
+                newFilePath = saveResult.Value;
+                document.FileName = fileName;
+                document.FilePath = newFilePath;
+            }
+            else
+            {
+                document.FileName = updateDto.FileName;
+                document.FilePath = updateDto.FilePath;
+            }
+
+            document.ProjectId = updateDto.ProjectId;
+
             _documentRepository.Update(document);
             await _documentRepository.SaveChangesAsync(cancellationToken);
+            
+            await transaction.CommitAsync(cancellationToken);
 
             // If DB update succeeded and we have a new file, delete the old one
             if (newFilePath != null && oldFilePath != null && oldFilePath != newFilePath)
             {
                 _fileService.DeleteFile(oldFilePath);
             }
+
+            return Result.Success();
         }
         catch (Exception)
         {
+            await transaction.RollbackAsync(cancellationToken);
             // Atomicity: If DB update fails, delete the NEW file
             if (newFilePath != null)
             {
@@ -158,8 +166,6 @@ public class ProjectDocumentService : IProjectDocumentService
             }
             throw;
         }
-
-        return Result.Success();
     }
 
     public async Task<Result> DeleteAsync(int id, CancellationToken cancellationToken = default)
@@ -170,16 +176,28 @@ public class ProjectDocumentService : IProjectDocumentService
 
         var filePath = document.FilePath;
 
-        _documentRepository.Delete(document);
-        await _documentRepository.SaveChangesAsync(cancellationToken);
+        await using var transaction = await _documentRepository.BeginTransactionAsync(cancellationToken);
 
-        // After successful DB deletion, delete the file
-        if (!string.IsNullOrEmpty(filePath))
+        try
         {
-            _fileService.DeleteFile(filePath);
-        }
+            _documentRepository.Delete(document);
+            await _documentRepository.SaveChangesAsync(cancellationToken);
+            
+            await transaction.CommitAsync(cancellationToken);
 
-        return Result.Success();
+            // After successful DB deletion, delete the file
+            if (!string.IsNullOrEmpty(filePath))
+            {
+                _fileService.DeleteFile(filePath);
+            }
+
+            return Result.Success();
+        }
+        catch (Exception)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
     }
 
     public async Task<Result<Stream>> GetFileStreamAsync(int id, CancellationToken cancellationToken = default)

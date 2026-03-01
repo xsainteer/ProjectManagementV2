@@ -9,6 +9,5 @@ public record ProjectDocumentDto(
 
 public record CreateProjectDocumentDto(
     string FileName,
-    string FilePath,
     int ProjectId
 );

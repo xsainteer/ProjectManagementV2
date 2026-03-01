@@ -10,4 +10,5 @@ public interface IRepository<T> where T : class, IEntity
     void Update(T entity);
     void Delete(T entity);
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+    Task<ITransaction> BeginTransactionAsync(CancellationToken cancellationToken = default);
 }

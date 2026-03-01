@@ -43,7 +43,7 @@ public static class ProjectDocumentEndpoints
         [FromServices] IProjectDocumentService documentService,
         CancellationToken cancellationToken)
     {
-        var createDto = new CreateProjectDocumentDto(file.FileName, string.Empty, projectId);
+        var createDto = new CreateProjectDocumentDto(file.FileName, projectId);
 
         await using var stream = file.OpenReadStream();
         var result = await documentService.CreateWithFileAsync(createDto, stream, file.FileName, cancellationToken);
