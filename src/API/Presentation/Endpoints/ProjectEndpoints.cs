@@ -16,6 +16,8 @@ public static class ProjectEndpoints
         group.MapPost("/full", CreateFullProject).DisableAntiforgery();
         group.MapPut("/{id:int}", UpdateProject);
         group.MapDelete("/{id:int}", DeleteProject);
+        group.MapPost("/{id:int}/employees/{employeeId:int}", AddEmployee);
+        group.MapDelete("/{id:int}/employees/{employeeId:int}", RemoveEmployee);
     }
 
     private static async Task<IResult> GetProjects(
@@ -100,6 +102,26 @@ public static class ProjectEndpoints
         CancellationToken cancellationToken)
     {
         var result = await projectService.DeleteAsync(id, cancellationToken);
+        return ResultMapper.ToActionResult(result, successStatusCode: StatusCodes.Status204NoContent);
+    }
+
+    private static async Task<IResult> AddEmployee(
+        int id,
+        int employeeId,
+        [FromServices] IProjectService projectService,
+        CancellationToken cancellationToken)
+    {
+        var result = await projectService.AddEmployeeAsync(id, employeeId, cancellationToken);
+        return ResultMapper.ToActionResult(result, successStatusCode: StatusCodes.Status204NoContent);
+    }
+
+    private static async Task<IResult> RemoveEmployee(
+        int id,
+        int employeeId,
+        [FromServices] IProjectService projectService,
+        CancellationToken cancellationToken)
+    {
+        var result = await projectService.RemoveEmployeeAsync(id, employeeId, cancellationToken);
         return ResultMapper.ToActionResult(result, successStatusCode: StatusCodes.Status204NoContent);
     }
 }

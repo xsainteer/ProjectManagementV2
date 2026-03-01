@@ -28,7 +28,6 @@ public class ProjectServiceTests
     {
         _projectRepositoryMock = new Mock<IProjectRepository>();
         _employeeRepositoryMock = new Mock<IEmployeeRepository>();
-        _loggerMock = new Mock<ILogger<ProjectService>>();
         _createValidatorMock = new Mock<IValidator<CreateProjectDto>>();
         _createFullValidatorMock = new Mock<IValidator<CreateFullProjectDto>>();
         _updateValidatorMock = new Mock<IValidator<UpdateProjectDto>>();
@@ -36,7 +35,6 @@ public class ProjectServiceTests
         _projectService = new ProjectService(
             _projectRepositoryMock.Object,
             _employeeRepositoryMock.Object,
-            _loggerMock.Object,
             _createValidatorMock.Object,
             _createFullValidatorMock.Object,
             _updateValidatorMock.Object);

@@ -147,6 +147,13 @@ public class ProjectRepository : Repository<Project>, IProjectRepository
             throw;
         }
     }
+
+    public async Task<Project?> GetWithEmployeesAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Include(p => p.Employees)
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+    }
 }
 
 public class ProjectTaskRepository : Repository<ProjectTask>, IProjectTaskRepository
