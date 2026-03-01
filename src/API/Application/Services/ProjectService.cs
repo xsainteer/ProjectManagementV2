@@ -1,6 +1,7 @@
 using Application.DTOs.Project;
 using Application.Interfaces;
 using Application.Interfaces.Services;
+using Application.Validators;
 using Domain.Common;
 using Domain.Entities;
 using FluentValidation;
@@ -65,9 +66,8 @@ public class ProjectService : IProjectService
 
     public async Task<Result<ProjectDto>> CreateAsync(CreateProjectDto createDto, CancellationToken cancellationToken = default)
     {
-        var validationResult = await _createValidator.ValidateAsync(createDto, cancellationToken);
-        if (!validationResult.IsValid)
-            return Result<ProjectDto>.Failure(Error.Validation(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
+        var validation = await _createValidator.ValidateToResultAsync(createDto, cancellationToken);
+        if (validation.IsFailure) return Result<ProjectDto>.Failure(validation.Error);
 
         var manager = await _employeeRepository.GetByIdAsync(createDto.ProjectManagerId, true, cancellationToken);
         if (manager == null)
@@ -92,9 +92,8 @@ public class ProjectService : IProjectService
 
     public async Task<Result<ProjectDto>> CreateFullAsync(CreateFullProjectDto createDto, List<FileData> files, CancellationToken cancellationToken = default)
     {
-        var validationResult = await _createFullValidator.ValidateAsync(createDto, cancellationToken);
-        if (!validationResult.IsValid)
-            return Result<ProjectDto>.Failure(Error.Validation(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
+        var validation = await _createFullValidator.ValidateToResultAsync(createDto, cancellationToken);
+        if (validation.IsFailure) return Result<ProjectDto>.Failure(validation.Error);
 
         var manager = await _employeeRepository.GetByIdAsync(createDto.ProjectManagerId, true, cancellationToken);
         if (manager == null)
@@ -116,7 +115,6 @@ public class ProjectService : IProjectService
                 Priority = createDto.Priority
             };
 
-            // 1. Add Executors
             foreach (var executorId in createDto.ExecutorIds)
             {
                 var executor = await _employeeRepository.GetByIdAsync(executorId, false, cancellationToken);
@@ -126,16 +124,13 @@ public class ProjectService : IProjectService
                 project.Employees.Add(executor);
             }
 
-            // 2. Save Project to get ID
             await _projectRepository.AddAsync(project, cancellationToken);
             await _projectRepository.SaveChangesAsync(cancellationToken);
 
-            // 3. Handle Files
             foreach (var file in files)
             {
                 var saveResult = await _fileService.SaveFileAsync(file.Stream, file.FileName, $"project_{project.Id}", cancellationToken);
-                if (saveResult.IsFailure)
-                    throw new Exception(saveResult.Error.Message); // Caught by local try-catch for cleanup
+                if (saveResult.IsFailure) throw new Exception(saveResult.Error.Message);
                 
                 savedFilePaths.Add(saveResult.Value);
                 
@@ -147,7 +142,6 @@ public class ProjectService : IProjectService
                 });
             }
 
-            // 4. Final save (for documents)
             await _projectRepository.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
 
@@ -156,19 +150,15 @@ public class ProjectService : IProjectService
         catch (Exception)
         {
             await transaction.RollbackAsync(cancellationToken);
-            foreach (var path in savedFilePaths)
-            {
-                _fileService.DeleteFile(path);
-            }
-            throw; // GlobalExceptionHandler will catch this
+            foreach (var path in savedFilePaths) _fileService.DeleteFile(path);
+            throw;
         }
     }
 
     public async Task<Result> UpdateAsync(UpdateProjectDto updateDto, CancellationToken cancellationToken = default)
     {
-        var validationResult = await _updateValidator.ValidateAsync(updateDto, cancellationToken);
-        if (!validationResult.IsValid)
-            return Result.Failure(Error.Validation(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
+        var validation = await _updateValidator.ValidateToResultAsync(updateDto, cancellationToken);
+        if (validation.IsFailure) return validation;
 
         var project = await _projectRepository.GetByIdAsync(updateDto.Id, false, cancellationToken);
         if (project == null)

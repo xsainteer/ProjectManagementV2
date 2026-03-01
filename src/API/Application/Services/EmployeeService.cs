@@ -1,6 +1,7 @@
 using Application.DTOs.Employee;
 using Application.Interfaces;
 using Application.Interfaces.Services;
+using Application.Validators;
 using Domain.Common;
 using Domain.Entities;
 using FluentValidation;
@@ -29,27 +30,13 @@ public class EmployeeService : IEmployeeService
         if (employee == null)
             return Result<EmployeeDto>.Failure(Error.NotFound($"Employee with ID {id} was not found."));
 
-        return Result<EmployeeDto>.Success(new EmployeeDto(
-            employee.Id,
-            employee.FirstName,
-            employee.LastName,
-            employee.MiddleName,
-            employee.Email
-        ));
+        return Result<EmployeeDto>.Success(MapToDto(employee));
     }
 
     public async Task<Result<IEnumerable<EmployeeDto>>> GetAllAsync(string? searchTerm, CancellationToken cancellationToken = default)
     {
         var employees = await _employeeRepository.GetAllAsync(searchTerm, true, cancellationToken);
-        var dtos = employees.Select(e => new EmployeeDto(
-            e.Id,
-            e.FirstName,
-            e.LastName,
-            e.MiddleName,
-            e.Email
-        ));
-
-        return Result<IEnumerable<EmployeeDto>>.Success(dtos);
+        return Result<IEnumerable<EmployeeDto>>.Success(employees.Select(MapToDto));
     }
 
     public async Task<Result<IEnumerable<EmployeeDto>>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -59,9 +46,8 @@ public class EmployeeService : IEmployeeService
 
     public async Task<Result<EmployeeDto>> CreateAsync(CreateEmployeeDto createDto, CancellationToken cancellationToken = default)
     {
-        var validationResult = await _createValidator.ValidateAsync(createDto, cancellationToken);
-        if (!validationResult.IsValid)
-            return Result<EmployeeDto>.Failure(Error.Validation(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
+        var validation = await _createValidator.ValidateToResultAsync(createDto, cancellationToken);
+        if (validation.IsFailure) return Result<EmployeeDto>.Failure(validation.Error);
 
         var employee = new Employee
         {
@@ -74,20 +60,13 @@ public class EmployeeService : IEmployeeService
         await _employeeRepository.AddAsync(employee, cancellationToken);
         await _employeeRepository.SaveChangesAsync(cancellationToken);
 
-        return Result<EmployeeDto>.Success(new EmployeeDto(
-            employee.Id,
-            employee.FirstName,
-            employee.LastName,
-            employee.MiddleName,
-            employee.Email
-        ));
+        return Result<EmployeeDto>.Success(MapToDto(employee));
     }
 
     public async Task<Result> UpdateAsync(UpdateEmployeeDto updateDto, CancellationToken cancellationToken = default)
     {
-        var validationResult = await _updateValidator.ValidateAsync(updateDto, cancellationToken);
-        if (!validationResult.IsValid)
-            return Result.Failure(Error.Validation(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
+        var validation = await _updateValidator.ValidateToResultAsync(updateDto, cancellationToken);
+        if (validation.IsFailure) return validation;
 
         var employee = await _employeeRepository.GetByIdAsync(updateDto.Id, false, cancellationToken);
         if (employee == null)
@@ -115,4 +94,12 @@ public class EmployeeService : IEmployeeService
 
         return Result.Success();
     }
+
+    private static EmployeeDto MapToDto(Employee employee) => new(
+        employee.Id,
+        employee.FirstName,
+        employee.LastName,
+        employee.MiddleName,
+        employee.Email
+    );
 }

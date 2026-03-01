@@ -1,6 +1,7 @@
 using Application.DTOs.ProjectDocument;
 using Application.Interfaces;
 using Application.Interfaces.Services;
+using Application.Validators;
 using Domain.Common;
 using Domain.Entities;
 using FluentValidation;
@@ -46,7 +47,6 @@ public class ProjectDocumentService : IProjectDocumentService
 
     public async Task<Result<ProjectDocumentDto>> CreateAsync(CreateProjectDocumentDto createDto, CancellationToken cancellationToken = default)
     {
-        // We'll keep this for compatibility with IService but focus on CreateWithFileAsync.
         return await CreateWithFileInternalAsync(createDto, null, null, cancellationToken);
     }
 
@@ -57,15 +57,14 @@ public class ProjectDocumentService : IProjectDocumentService
 
     private async Task<Result<ProjectDocumentDto>> CreateWithFileInternalAsync(CreateProjectDocumentDto createDto, Stream? fileStream, string? fileName, CancellationToken cancellationToken)
     {
-        var validationResult = await _createValidator.ValidateAsync(createDto, cancellationToken);
-        if (!validationResult.IsValid)
-            return Result<ProjectDocumentDto>.Failure(Error.Validation(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
+        var validation = await _createValidator.ValidateToResultAsync(createDto, cancellationToken);
+        if (validation.IsFailure) return Result<ProjectDocumentDto>.Failure(validation.Error);
 
         if (await _projectRepository.GetByIdAsync(createDto.ProjectId, true, cancellationToken) == null)
             return Result<ProjectDocumentDto>.Failure(Error.NotFound($"Project with ID {createDto.ProjectId} was not found."));
 
         await using var transaction = await _documentRepository.BeginTransactionAsync(cancellationToken);
-        var savedFilePath = String.Empty;
+        string savedFilePath = String.Empty;
 
         try
         {
@@ -95,7 +94,6 @@ public class ProjectDocumentService : IProjectDocumentService
         catch (Exception)
         {
             await transaction.RollbackAsync(cancellationToken);
-            // Atomicity: If DB save fails, delete the file if we saved one
             _fileService.DeleteFile(savedFilePath);
             throw;
         }
@@ -108,9 +106,8 @@ public class ProjectDocumentService : IProjectDocumentService
 
     public async Task<Result> UpdateWithFileAsync(ProjectDocumentDto updateDto, Stream? fileStream, string? fileName, CancellationToken cancellationToken = default)
     {
-        var validationResult = await _updateValidator.ValidateAsync(updateDto, cancellationToken);
-        if (!validationResult.IsValid)
-            return Result.Failure(Error.Validation(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
+        var validation = await _updateValidator.ValidateToResultAsync(updateDto, cancellationToken);
+        if (validation.IsFailure) return validation;
 
         var document = await _documentRepository.GetByIdAsync(updateDto.Id, false, cancellationToken);
         if (document == null)
@@ -148,7 +145,6 @@ public class ProjectDocumentService : IProjectDocumentService
             
             await transaction.CommitAsync(cancellationToken);
 
-            // If DB update succeeded and we have a new file, delete the old one
             if (newFilePath != null && oldFilePath != null && oldFilePath != newFilePath)
             {
                 _fileService.DeleteFile(oldFilePath);
@@ -159,11 +155,7 @@ public class ProjectDocumentService : IProjectDocumentService
         catch (Exception)
         {
             await transaction.RollbackAsync(cancellationToken);
-            // Atomicity: If DB update fails, delete the NEW file
-            if (newFilePath != null)
-            {
-                _fileService.DeleteFile(newFilePath);
-            }
+            if (newFilePath != null) _fileService.DeleteFile(newFilePath);
             throw;
         }
     }
@@ -175,21 +167,15 @@ public class ProjectDocumentService : IProjectDocumentService
             return Result.Failure(Error.NotFound($"Document with ID {id} was not found."));
 
         var filePath = document.FilePath;
-
         await using var transaction = await _documentRepository.BeginTransactionAsync(cancellationToken);
 
         try
         {
             _documentRepository.Delete(document);
             await _documentRepository.SaveChangesAsync(cancellationToken);
-            
             await transaction.CommitAsync(cancellationToken);
 
-            // After successful DB deletion, delete the file
-            if (!string.IsNullOrEmpty(filePath))
-            {
-                _fileService.DeleteFile(filePath);
-            }
+            if (!string.IsNullOrEmpty(filePath)) _fileService.DeleteFile(filePath);
 
             return Result.Success();
         }

@@ -1,6 +1,7 @@
 using Application.DTOs.ProjectTask;
 using Application.Interfaces;
 using Application.Interfaces.Services;
+using Application.Validators;
 using Domain.Common;
 using Domain.Entities;
 using FluentValidation;
@@ -46,9 +47,8 @@ public class ProjectTaskService : IProjectTaskService
 
     public async Task<Result<ProjectTaskDto>> CreateAsync(CreateProjectTaskDto createDto, CancellationToken cancellationToken = default)
     {
-        var validationResult = await _createValidator.ValidateAsync(createDto, cancellationToken);
-        if (!validationResult.IsValid)
-            return Result<ProjectTaskDto>.Failure(Error.Validation(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
+        var validation = await _createValidator.ValidateToResultAsync(createDto, cancellationToken);
+        if (validation.IsFailure) return Result<ProjectTaskDto>.Failure(validation.Error);
 
         var project = await _projectRepository.GetWithEmployeesAsync(createDto.ProjectId, cancellationToken);
         if (project == null)
@@ -79,18 +79,16 @@ public class ProjectTaskService : IProjectTaskService
 
     public async Task<Result> UpdateAsync(UpdateProjectTaskDto updateDto, CancellationToken cancellationToken = default)
     {
-        var validationResult = await _updateValidator.ValidateAsync(updateDto, cancellationToken);
-        if (!validationResult.IsValid)
-            return Result.Failure(Error.Validation(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
+        var validation = await _updateValidator.ValidateToResultAsync(updateDto, cancellationToken);
+        if (validation.IsFailure) return validation;
 
         var task = await _taskRepository.GetByIdAsync(updateDto.Id, false, cancellationToken);
         if (task == null)
             return Result.Failure(Error.NotFound($"Task with ID {updateDto.Id} was not found."));
 
-        var projectId = task.ProjectId;
-        var project = await _projectRepository.GetWithEmployeesAsync(projectId, cancellationToken);
+        var project = await _projectRepository.GetWithEmployeesAsync(task.ProjectId, cancellationToken);
         if (project == null)
-            return Result.Failure(Error.NotFound($"Project with ID {projectId} was not found."));
+            return Result.Failure(Error.NotFound($"Project with ID {task.ProjectId} was not found."));
 
         if (!IsEmployeeAssignedToProject(project, updateDto.AuthorId))
             return Result.Failure(Error.Validation($"Author with ID {updateDto.AuthorId} is not assigned to this project."));
