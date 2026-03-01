@@ -30,6 +30,5 @@ public record UpdateProjectTaskDto(
     int ExecutorId,
     ProjectTaskStatus Status,
     string? Comment,
-    int Priority,
-    int ProjectId
+    int Priority
 );

@@ -50,14 +50,15 @@ public class ProjectTaskService : IProjectTaskService
         if (!validationResult.IsValid)
             return Result<ProjectTaskDto>.Failure(Error.Validation(string.Join(", ", validationResult.Errors.Select(e => e.ErrorMessage))));
 
-        if (await _employeeRepository.GetByIdAsync(createDto.AuthorId, true, cancellationToken) == null)
-            return Result<ProjectTaskDto>.Failure(Error.NotFound($"Author with ID {createDto.AuthorId} was not found."));
-        
-        if (await _employeeRepository.GetByIdAsync(createDto.ExecutorId, true, cancellationToken) == null)
-            return Result<ProjectTaskDto>.Failure(Error.NotFound($"Executor with ID {createDto.ExecutorId} was not found."));
-
-        if (await _projectRepository.GetByIdAsync(createDto.ProjectId, true, cancellationToken) == null)
+        var project = await _projectRepository.GetWithEmployeesAsync(createDto.ProjectId, cancellationToken);
+        if (project == null)
             return Result<ProjectTaskDto>.Failure(Error.NotFound($"Project with ID {createDto.ProjectId} was not found."));
+
+        if (!IsEmployeeAssignedToProject(project, createDto.AuthorId))
+            return Result<ProjectTaskDto>.Failure(Error.Validation($"Author with ID {createDto.AuthorId} is not assigned to this project."));
+
+        if (!IsEmployeeAssignedToProject(project, createDto.ExecutorId))
+            return Result<ProjectTaskDto>.Failure(Error.Validation($"Executor with ID {createDto.ExecutorId} is not assigned to this project."));
 
         var task = new ProjectTask
         {
@@ -86,14 +87,16 @@ public class ProjectTaskService : IProjectTaskService
         if (task == null)
             return Result.Failure(Error.NotFound($"Task with ID {updateDto.Id} was not found."));
 
-        if (task.AuthorId != updateDto.AuthorId && await _employeeRepository.GetByIdAsync(updateDto.AuthorId, true, cancellationToken) == null)
-            return Result.Failure(Error.NotFound($"Author with ID {updateDto.AuthorId} was not found."));
+        var projectId = task.ProjectId;
+        var project = await _projectRepository.GetWithEmployeesAsync(projectId, cancellationToken);
+        if (project == null)
+            return Result.Failure(Error.NotFound($"Project with ID {projectId} was not found."));
 
-        if (task.ExecutorId != updateDto.ExecutorId && await _employeeRepository.GetByIdAsync(updateDto.ExecutorId, true, cancellationToken) == null)
-            return Result.Failure(Error.NotFound($"Executor with ID {updateDto.ExecutorId} was not found."));
+        if (!IsEmployeeAssignedToProject(project, updateDto.AuthorId))
+            return Result.Failure(Error.Validation($"Author with ID {updateDto.AuthorId} is not assigned to this project."));
 
-        if (task.ProjectId != updateDto.ProjectId && await _projectRepository.GetByIdAsync(updateDto.ProjectId, true, cancellationToken) == null)
-            return Result.Failure(Error.NotFound($"Project with ID {updateDto.ProjectId} was not found."));
+        if (!IsEmployeeAssignedToProject(project, updateDto.ExecutorId))
+            return Result.Failure(Error.Validation($"Executor with ID {updateDto.ExecutorId} is not assigned to this project."));
 
         task.Name = updateDto.Name;
         task.AuthorId = updateDto.AuthorId;
@@ -101,7 +104,6 @@ public class ProjectTaskService : IProjectTaskService
         task.Status = updateDto.Status;
         task.Comment = updateDto.Comment;
         task.Priority = updateDto.Priority;
-        task.ProjectId = updateDto.ProjectId;
 
         _taskRepository.Update(task);
         await _taskRepository.SaveChangesAsync(cancellationToken);
@@ -119,6 +121,11 @@ public class ProjectTaskService : IProjectTaskService
         await _taskRepository.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
+    }
+
+    private static bool IsEmployeeAssignedToProject(Project project, int employeeId)
+    {
+        return project.ProjectManagerId == employeeId || project.Employees.Any(e => e.Id == employeeId);
     }
 
     private static ProjectTaskDto MapToDto(ProjectTask task) => new(
