@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ProjectList } from './components/ProjectList';
 import { ProjectWizard } from './components/ProjectWizard';
+import { EmployeeManager } from './components/EmployeeManager';
 import './index.css';
 
 function App() {
@@ -34,6 +35,12 @@ function App() {
           Projects
         </button>
         <button 
+          className={`nav-btn ${path === '/employees' ? 'active' : ''}`}
+          onClick={() => navigate('/employees')}
+        >
+          Employees
+        </button>
+        <button 
           className={`nav-btn ${path === '/wizard' ? 'active' : ''}`}
           onClick={() => navigate('/wizard')}
         >
@@ -47,6 +54,8 @@ function App() {
             onComplete={() => navigate('/projects')}
             onCancel={() => navigate('/projects')}
           />
+        ) : path === '/employees' ? (
+          <EmployeeManager />
         ) : (
           <ProjectList />
         )}
