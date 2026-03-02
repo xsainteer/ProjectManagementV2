@@ -78,12 +78,7 @@ public class ProjectDocumentService : IProjectDocumentService
                 savedFilePath = saveResult.Value;
             }
 
-            var document = new ProjectDocument
-            {
-                FileName = fileName ?? createDto.FileName,
-                FilePath = savedFilePath,
-                ProjectId = createDto.ProjectId
-            };
+            var document = createDto.ToEntity(fileName, savedFilePath);
 
             await _documentRepository.AddAsync(document, cancellationToken);
             await _documentRepository.SaveChangesAsync(cancellationToken);
@@ -132,14 +127,12 @@ public class ProjectDocumentService : IProjectDocumentService
                 newFilePath = saveResult.Value;
                 document.FileName = fileName;
                 document.FilePath = newFilePath;
+                document.ProjectId = updateDto.ProjectId;
             }
             else
             {
-                document.FileName = updateDto.FileName;
-                document.FilePath = updateDto.FilePath;
+                document.UpdateWith(updateDto);
             }
-
-            document.ProjectId = updateDto.ProjectId;
 
             _documentRepository.Update(document);
             await _documentRepository.SaveChangesAsync(cancellationToken);

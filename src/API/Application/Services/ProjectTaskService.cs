@@ -61,16 +61,7 @@ public class ProjectTaskService : IProjectTaskService
         if (!IsEmployeeAssignedToProject(project, createDto.ExecutorId))
             return Result<ProjectTaskDto>.Failure(Error.Validation($"Executor with ID {createDto.ExecutorId} is not assigned to this project."));
 
-        var task = new ProjectTask
-        {
-            Name = createDto.Name,
-            AuthorId = createDto.AuthorId,
-            ExecutorId = createDto.ExecutorId,
-            Status = createDto.Status,
-            Comment = createDto.Comment,
-            Priority = createDto.Priority,
-            ProjectId = createDto.ProjectId
-        };
+        var task = createDto.ToEntity();
 
         await _taskRepository.AddAsync(task, cancellationToken);
         await _taskRepository.SaveChangesAsync(cancellationToken);
@@ -97,12 +88,7 @@ public class ProjectTaskService : IProjectTaskService
         if (!IsEmployeeAssignedToProject(project, updateDto.ExecutorId))
             return Result.Failure(Error.Validation($"Executor with ID {updateDto.ExecutorId} is not assigned to this project."));
 
-        task.Name = updateDto.Name;
-        task.AuthorId = updateDto.AuthorId;
-        task.ExecutorId = updateDto.ExecutorId;
-        task.Status = updateDto.Status;
-        task.Comment = updateDto.Comment;
-        task.Priority = updateDto.Priority;
+        task.UpdateWith(updateDto);
 
         _taskRepository.Update(task);
         await _taskRepository.SaveChangesAsync(cancellationToken);

@@ -74,16 +74,7 @@ public class ProjectService : IProjectService
         if (manager == null)
             return Result<ProjectDto>.Failure(Error.NotFound($"Project manager with ID {createDto.ProjectManagerId} was not found."));
 
-        var project = new Project
-        {
-            Name = createDto.Name,
-            CustomerCompany = createDto.CustomerCompany,
-            PerformerCompany = createDto.PerformerCompany,
-            ProjectManagerId = createDto.ProjectManagerId,
-            StartDate = createDto.StartDate,
-            EndDate = createDto.EndDate,
-            Priority = createDto.Priority
-        };
+        var project = createDto.ToEntity();
 
         await _projectRepository.AddAsync(project, cancellationToken);
         await _projectRepository.SaveChangesAsync(cancellationToken);
@@ -105,16 +96,7 @@ public class ProjectService : IProjectService
 
         try
         {
-            var project = new Project
-            {
-                Name = createDto.Name,
-                CustomerCompany = createDto.CustomerCompany,
-                PerformerCompany = createDto.PerformerCompany,
-                ProjectManagerId = createDto.ProjectManagerId,
-                StartDate = createDto.StartDate,
-                EndDate = createDto.EndDate,
-                Priority = createDto.Priority
-            };
+            var project = createDto.ToEntity();
 
             foreach (var executorId in createDto.ExecutorIds)
             {
@@ -172,13 +154,7 @@ public class ProjectService : IProjectService
                 return Result.Failure(Error.NotFound($"Project manager with ID {updateDto.ProjectManagerId} was not found."));
         }
 
-        project.Name = updateDto.Name;
-        project.CustomerCompany = updateDto.CustomerCompany;
-        project.PerformerCompany = updateDto.PerformerCompany;
-        project.ProjectManagerId = updateDto.ProjectManagerId;
-        project.StartDate = updateDto.StartDate;
-        project.EndDate = updateDto.EndDate;
-        project.Priority = updateDto.Priority;
+        project.UpdateWith(updateDto);
 
         _projectRepository.Update(project);
         await _projectRepository.SaveChangesAsync(cancellationToken);

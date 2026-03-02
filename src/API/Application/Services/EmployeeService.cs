@@ -50,13 +50,7 @@ public class EmployeeService : IEmployeeService
         var validation = await _createValidator.ValidateToResultAsync(createDto, cancellationToken);
         if (validation.IsFailure) return Result<EmployeeDto>.Failure(validation.Error);
 
-        var employee = new Employee
-        {
-            FirstName = createDto.FirstName,
-            LastName = createDto.LastName,
-            MiddleName = createDto.MiddleName,
-            Email = createDto.Email
-        };
+        var employee = createDto.ToEntity();
 
         await _employeeRepository.AddAsync(employee, cancellationToken);
         await _employeeRepository.SaveChangesAsync(cancellationToken);
@@ -73,10 +67,7 @@ public class EmployeeService : IEmployeeService
         if (employee == null)
             return Result.Failure(Error.NotFound($"Employee with ID {updateDto.Id} was not found."));
 
-        employee.FirstName = updateDto.FirstName;
-        employee.LastName = updateDto.LastName;
-        employee.MiddleName = updateDto.MiddleName;
-        employee.Email = updateDto.Email;
+        employee.UpdateWith(updateDto);
 
         _employeeRepository.Update(employee);
         await _employeeRepository.SaveChangesAsync(cancellationToken);
