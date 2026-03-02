@@ -21,18 +21,11 @@ public static class ProjectEndpoints
     }
 
     private static async Task<IResult> GetProjects(
+        [AsParameters] GetProjectsRequestDto requestDto,
         [FromServices] IProjectService projectService,
-        [FromQuery] DateTime? startDateFrom,
-        [FromQuery] DateTime? startDateTo,
-        [FromQuery] int? priority,
-        [FromQuery] string? sortBy,
-        [FromQuery] bool sortDescending = false,
-        [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10,
         CancellationToken cancellationToken = default)
     {
-        var result = await projectService.GetProjectsAsync(
-            startDateFrom, startDateTo, priority, sortBy, sortDescending, pageNumber, pageSize, cancellationToken);
+        var result = await projectService.GetProjectsAsync(requestDto, cancellationToken);
 
         return ResultMapper.ToActionResult(result);
     }

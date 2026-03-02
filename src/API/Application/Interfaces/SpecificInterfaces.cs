@@ -12,13 +12,7 @@ public interface IEmployeeRepository : IRepository<Employee>
 public interface IProjectRepository : IRepository<Project>
 {
     Task<(IEnumerable<Project> Items, int TotalCount)> GetProjectsAsync(
-        DateTime? startDateFrom,
-        DateTime? startDateTo,
-        int? priority,
-        string? sortBy,
-        bool sortDescending,
-        int pageNumber,
-        int pageSize,
+        GetProjectsRequestDto requestDto,
         bool asNoTracking = true,
         CancellationToken cancellationToken = default);
 

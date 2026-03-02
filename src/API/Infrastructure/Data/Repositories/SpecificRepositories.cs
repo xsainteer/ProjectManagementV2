@@ -40,13 +40,7 @@ public class ProjectRepository : Repository<Project>, IProjectRepository
     }
 
     public async Task<(IEnumerable<Project> Items, int TotalCount)> GetProjectsAsync(
-        DateTime? startDateFrom,
-        DateTime? startDateTo,
-        int? priority,
-        string? sortBy,
-        bool sortDescending,
-        int pageNumber,
-        int pageSize,
+        GetProjectsRequestDto requestDto,
         bool asNoTracking = true,
         CancellationToken cancellationToken = default)
     {
@@ -56,23 +50,23 @@ public class ProjectRepository : Repository<Project>, IProjectRepository
             query = query.AsNoTracking();
 
         // Filtering
-        if (startDateFrom.HasValue)
-            query = query.Where(p => p.StartDate >= startDateFrom.Value);
+        if (requestDto.StartDateFrom.HasValue)
+            query = query.Where(p => p.StartDate >= requestDto.StartDateFrom.Value);
 
-        if (startDateTo.HasValue)
-            query = query.Where(p => p.StartDate <= startDateTo.Value);
+        if (requestDto.StartDateTo.HasValue)
+            query = query.Where(p => p.StartDate <= requestDto.StartDateTo.Value);
 
-        if (priority.HasValue)
-            query = query.Where(p => p.Priority == priority.Value);
+        if (requestDto.Priority.HasValue)
+            query = query.Where(p => p.Priority == requestDto.Priority.Value);
 
         // Sorting
-        query = sortBy?.ToLower() switch
+        query = requestDto.SortBy?.ToLower() switch
         {
-            "name" => sortDescending ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name),
-            "customercompany" => sortDescending ? query.OrderByDescending(p => p.CustomerCompany) : query.OrderBy(p => p.CustomerCompany),
-            "performercompany" => sortDescending ? query.OrderByDescending(p => p.PerformerCompany) : query.OrderBy(p => p.PerformerCompany),
-            "priority" => sortDescending ? query.OrderByDescending(p => p.Priority) : query.OrderBy(p => p.Priority),
-            "startdate" => sortDescending ? query.OrderByDescending(p => p.StartDate) : query.OrderBy(p => p.StartDate),
+            "name" => requestDto.SortDescending ? query.OrderByDescending(p => p.Name) : query.OrderBy(p => p.Name),
+            "customercompany" => requestDto.SortDescending ? query.OrderByDescending(p => p.CustomerCompany) : query.OrderBy(p => p.CustomerCompany),
+            "performercompany" => requestDto.SortDescending ? query.OrderByDescending(p => p.PerformerCompany) : query.OrderBy(p => p.PerformerCompany),
+            "priority" => requestDto.SortDescending ? query.OrderByDescending(p => p.Priority) : query.OrderBy(p => p.Priority),
+            "startdate" => requestDto.SortDescending ? query.OrderByDescending(p => p.StartDate) : query.OrderBy(p => p.StartDate),
             _ => query.OrderBy(p => p.Id) // Default sorting
         };
 
@@ -80,8 +74,8 @@ public class ProjectRepository : Repository<Project>, IProjectRepository
 
         // Pagination
         var items = await query
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
+            .Skip((requestDto.PageNumber - 1) * requestDto.PageSize)
+            .Take(requestDto.PageSize)
             .ToListAsync(cancellationToken);
 
         return (items, totalCount);

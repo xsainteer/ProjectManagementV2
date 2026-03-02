@@ -15,13 +15,7 @@ public interface IEmployeeService : IService<Employee, EmployeeDto, CreateEmploy
 public interface IProjectService : IService<Project, ProjectDto, CreateProjectDto, UpdateProjectDto>
 {
     Task<Result<PaginatedResultDto<ProjectDto>>> GetProjectsAsync(
-        DateTime? startDateFrom,
-        DateTime? startDateTo,
-        int? priority,
-        string? sortBy,
-        bool sortDescending,
-        int pageNumber,
-        int pageSize,
+        GetProjectsRequestDto requestDto,
         CancellationToken cancellationToken = default);
 
     Task<Result<ProjectDto>> CreateFullAsync(CreateFullProjectDto createDto, List<FileData> files, CancellationToken cancellationToken = default);

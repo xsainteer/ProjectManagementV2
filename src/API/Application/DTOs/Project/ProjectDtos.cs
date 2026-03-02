@@ -43,6 +43,16 @@ public record UpdateProjectDto(
     int Priority
 );
 
+public record GetProjectsRequestDto(
+    DateTime? StartDateFrom = null,
+    DateTime? StartDateTo = null,
+    int? Priority = null,
+    string? SortBy = null,
+    bool SortDescending = false,
+    int PageNumber = 1,
+    int PageSize = 10
+);
+
 public record FileData(Stream Stream, string FileName);
 
 public record PaginatedResultDto<T>(IEnumerable<T> Items, int TotalCount);

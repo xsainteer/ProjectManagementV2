@@ -50,17 +50,10 @@ public class ProjectService : IProjectService
     }
 
     public async Task<Result<PaginatedResultDto<ProjectDto>>> GetProjectsAsync(
-        DateTime? startDateFrom,
-        DateTime? startDateTo,
-        int? priority,
-        string? sortBy,
-        bool sortDescending,
-        int pageNumber,
-        int pageSize,
+        GetProjectsRequestDto requestDto,
         CancellationToken cancellationToken = default)
     {
-        var (items, totalCount) = await _projectRepository.GetProjectsAsync(
-            startDateFrom, startDateTo, priority, sortBy, sortDescending, pageNumber, pageSize, true, cancellationToken);
+        var (items, totalCount) = await _projectRepository.GetProjectsAsync(requestDto, true, cancellationToken);
 
         return Result<PaginatedResultDto<ProjectDto>>.Success(new PaginatedResultDto<ProjectDto>(items.Select(p => p.ToDto()), totalCount));
     }
