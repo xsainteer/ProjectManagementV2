@@ -1,6 +1,7 @@
 using Application.Interfaces;
 using Domain.Common;
 using Infrastructure.Data;
+using Infrastructure.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -59,30 +60,5 @@ public class Repository<T> : IRepository<T> where T : class, IEntity
     {
         var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
         return new EfTransaction(transaction);
-    }
-}
-
-public class EfTransaction : ITransaction
-{
-    private readonly IDbContextTransaction _transaction;
-
-    public EfTransaction(IDbContextTransaction transaction)
-    {
-        _transaction = transaction;
-    }
-
-    public async Task CommitAsync(CancellationToken cancellationToken = default)
-    {
-        await _transaction.CommitAsync(cancellationToken);
-    }
-
-    public async Task RollbackAsync(CancellationToken cancellationToken = default)
-    {
-        await _transaction.RollbackAsync(cancellationToken);
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        await _transaction.DisposeAsync();
     }
 }
