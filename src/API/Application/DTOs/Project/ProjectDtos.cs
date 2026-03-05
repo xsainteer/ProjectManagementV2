@@ -11,6 +11,19 @@ public record ProjectDto(
     int Priority
 );
 
+public record ProjectDetailsDto(
+    int Id,
+    string Name,
+    string CustomerCompany,
+    string PerformerCompany,
+    Application.DTOs.Employee.EmployeeDto ProjectManager,
+    DateTime StartDate,
+    DateTime? EndDate,
+    int Priority,
+    IEnumerable<Application.DTOs.Employee.EmployeeDto> Employees,
+    IEnumerable<Application.DTOs.ProjectDocument.ProjectDocumentDto> Documents
+);
+
 public record CreateProjectDto(
     string Name,
     string CustomerCompany,

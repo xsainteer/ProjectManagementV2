@@ -14,6 +14,8 @@ public interface IEmployeeService : IService<Employee, EmployeeDto, CreateEmploy
 
 public interface IProjectService : IService<Project, ProjectDto, CreateProjectDto, UpdateProjectDto>
 {
+    Task<Result<ProjectDetailsDto>> GetProjectDetailsAsync(int id, CancellationToken cancellationToken = default);
+
     Task<Result<PaginatedResultDto<ProjectDto>>> GetProjectsAsync(
         GetProjectsRequestDto requestDto,
         CancellationToken cancellationToken = default);

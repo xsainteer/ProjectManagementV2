@@ -87,6 +87,16 @@ public class ProjectRepository : Repository<Project>, IProjectRepository
             .Include(p => p.Employees)
             .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
     }
+
+    public async Task<Project?> GetProjectDetailsAsync(int id, CancellationToken cancellationToken = default)
+    {
+        return await _dbSet
+            .Include(p => p.Employees)
+            .Include(p => p.Documents)
+            .Include((p => p.ProjectManager))
+            .AsNoTracking()
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+    }
 }
 
 public class ProjectTaskRepository : Repository<ProjectTask>, IProjectTaskRepository

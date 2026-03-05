@@ -43,6 +43,15 @@ public class ProjectService : IProjectService
         return Result<ProjectDto>.Success(project.ToDto());
     }
 
+    public async Task<Result<ProjectDetailsDto>> GetProjectDetailsAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var project = await _projectRepository.GetProjectDetailsAsync(id, cancellationToken);
+        if (project == null)
+            return Result<ProjectDetailsDto>.Failure(Error.NotFound($"Project with ID {id} was not found."));
+
+        return Result<ProjectDetailsDto>.Success(project.ToDetailsDto());
+    }
+
     public async Task<Result<IEnumerable<ProjectDto>>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var projects = await _projectRepository.GetAllAsync(true, cancellationToken);

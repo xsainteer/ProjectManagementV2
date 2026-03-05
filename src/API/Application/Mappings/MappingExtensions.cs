@@ -64,6 +64,19 @@ public static class MappingExtensions
         project.Priority
     );
 
+    public static ProjectDetailsDto ToDetailsDto(this Project project) => new(
+        project.Id,
+        project.Name,
+        project.CustomerCompany,
+        project.PerformerCompany,
+        project.ProjectManager.ToDto(),
+        project.StartDate,
+        project.EndDate,
+        project.Priority,
+        project.Employees.Select(e => e.ToDto()),
+        project.Documents.Select(d => d.ToDto())
+    );
+
     public static Project ToEntity(this CreateProjectDto dto) => new()
     {
         Name = dto.Name,

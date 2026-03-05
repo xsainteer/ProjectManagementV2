@@ -12,6 +12,7 @@ public static class ProjectEndpoints
 
         group.MapGet("/", GetProjects);
         group.MapGet("/{id:int}", GetProjectById);
+        group.MapGet("/{id:int}/details", GetProjectDetails);
         group.MapPost("/", CreateProject);
         group.MapPost("/full", CreateFullProject).DisableAntiforgery();
         group.MapPut("/{id:int}", UpdateProject);
@@ -36,6 +37,15 @@ public static class ProjectEndpoints
         CancellationToken cancellationToken)
     {
         var result = await projectService.GetByIdAsync(id, cancellationToken);
+        return ResultMapper.ToActionResult(result);
+    }
+
+    private static async Task<IResult> GetProjectDetails(
+        int id,
+        [FromServices] IProjectService projectService,
+        CancellationToken cancellationToken)
+    {
+        var result = await projectService.GetProjectDetailsAsync(id, cancellationToken);
         return ResultMapper.ToActionResult(result);
     }
 
