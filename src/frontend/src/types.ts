@@ -17,6 +17,19 @@ export interface Project {
   priority: number;
 }
 
+export interface ProjectDocument {
+  id: number;
+  fileName: string;
+  filePath: string;
+  projectId: number;
+}
+
+export interface ProjectDetails extends Project {
+  projectManager: Employee;
+  employees: Employee[];
+  documents: ProjectDocument[];
+}
+
 export interface ProjectTask {
   id: number;
   name: string;

@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../api';
 import type {Project} from '../types';
 
-export const ProjectList: React.FC = () => {
+interface Props {
+  onManage: (id: number) => void;
+}
+
+export const ProjectList: React.FC<Props> = ({ onManage }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [filters, setFormData] = useState({
     startDateFrom: '',
@@ -28,7 +32,8 @@ export const ProjectList: React.FC = () => {
 
   useEffect(fetchProjects, [filters]);
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (e: React.MouseEvent, id: number) => {
+    e.stopPropagation();
     if (confirm('Are you sure?')) {
       await api.projects.delete(id);
       fetchProjects();
@@ -63,16 +68,19 @@ export const ProjectList: React.FC = () => {
 
       <div className="grid">
         {projects.map(p => (
-          <div key={p.id} className="card">
+          <div key={p.id} className="card" style={{ cursor: 'pointer' }} onClick={() => onManage(p.id)}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
               <span className="priority">Priority {p.priority}</span>
-              <button style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => handleDelete(p.id)}>Delete</button>
+              <button style={{ color: 'var(--danger)', background: 'none', border: 'none', cursor: 'pointer' }} onClick={(e) => handleDelete(e, p.id)}>Delete</button>
             </div>
             <h3 style={{ margin: '0.5rem 0' }}>{p.name}</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>
               {p.customerCompany} &rarr; {p.performerCompany}
             </p>
-            <small>Started: {new Date(p.startDate).toLocaleDateString()}</small>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+              <small>Started: {new Date(p.startDate).toLocaleDateString()}</small>
+              <button className="secondary" style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem' }}>Manage &rarr;</button>
+            </div>
           </div>
         ))}
       </div>

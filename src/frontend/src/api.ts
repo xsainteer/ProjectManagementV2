@@ -1,9 +1,12 @@
-import type {Project, Employee, Result} from './types';
+import type {Project, Employee, Result, ProjectDetails, ProjectDocument} from './types';
 
 const API_BASE = '/api';
 
 const handleResponse = async <T>(response: Response): Promise<Result<T>> => {
   if (response.ok) {
+    if (response.status === 204) {
+      return { isSuccess: true, value: undefined as any };
+    }
     const value = await response.json();
     return { isSuccess: true, value };
   } else {
@@ -35,6 +38,8 @@ export const api = {
     },
     getById: (id: number): Promise<Result<Project>> => 
       fetch(`${API_BASE}/projects/${id}`).then(handleResponse),
+    getDetails: (id: number): Promise<Result<ProjectDetails>> => 
+      fetch(`${API_BASE}/projects/${id}/details`).then(handleResponse),
     create: (data: any): Promise<Result<Project>> => 
       fetch(`${API_BASE}/projects`, {
         method: 'POST',
@@ -46,8 +51,34 @@ export const api = {
         method: 'POST',
         body: formData
       }).then(handleResponse),
+    update: (id: number, data: any): Promise<Result<void>> => 
+      fetch(`${API_BASE}/projects/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      }).then(handleResponse),
     delete: (id: number): Promise<Result<void>> => 
-      fetch(`${API_BASE}/projects/${id}`, { method: 'DELETE' }).then(r => ({ isSuccess: r.ok, value: undefined as any }))
+      fetch(`${API_BASE}/projects/${id}`, { method: 'DELETE' }).then(r => ({ isSuccess: r.ok, value: undefined as any })),
+    addEmployee: (projectId: number, employeeId: number): Promise<Result<void>> => 
+      fetch(`${API_BASE}/projects/${projectId}/employees/${employeeId}`, { method: 'POST' }).then(handleResponse),
+    removeEmployee: (projectId: number, employeeId: number): Promise<Result<void>> => 
+      fetch(`${API_BASE}/projects/${projectId}/employees/${employeeId}`, { method: 'DELETE' }).then(handleResponse),
+  },
+  documents: {
+    upload: (projectId: number, file: File): Promise<Result<ProjectDocument>> => {
+      const formData = new FormData();
+      formData.append('projectId', projectId.toString());
+      formData.append('file', file);
+      return fetch(`${API_BASE}/documents`, {
+        method: 'POST',
+        body: formData
+      }).then(handleResponse);
+    },
+    delete: (id: number): Promise<Result<void>> => 
+      fetch(`${API_BASE}/documents/${id}`, { method: 'DELETE' }).then(r => ({ isSuccess: r.ok, value: undefined as any })),
+    download: (id: number, fileName: string) => {
+      window.open(`${API_BASE}/documents/${id}/download`, '_blank');
+    }
   },
   employees: {
     getAll: (params?: any): Promise<Result<Employee[]>> => {
